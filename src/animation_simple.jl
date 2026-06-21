@@ -1,5 +1,5 @@
 # =============================================================================
-# animation.jl -- Animacion del pendulo invertido con Makie
+# animation_simple.jl -- Animacion del pendulo invertido con Makie
 # =============================================================================
 # Genera animaciones del carro-pendulo usando GLMakie.
 # Soporta:

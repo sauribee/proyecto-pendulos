@@ -1,43 +1,82 @@
 # Péndulo invertido sobre un carro — Álgebra Lineal Aplicada
 
-Análisis y control del péndulo invertido sobre un carro mediante herramientas
-de álgebra lineal: representación en espacio de estados, análisis espectral,
+Análisis y control del péndulo invertido sobre un carro mediante herramientas de
+álgebra lineal: representación en espacio de estados, análisis espectral,
 controlabilidad y observabilidad de Kalman, asignación de polos (Ackermann) y
-regulación lineal cuadrática (LQR).
+regulación lineal cuadrática (LQR). El proyecto estudia **dos configuraciones**
+—un péndulo simple y un péndulo doble— que comparten la misma maquinaria genérica
+de análisis y control.
 
 Universidad Nacional de Colombia, Sede Medellín — Facultad de Ciencias.
 Autores: Mateo Bedoya Rojas, Santiago Uribe Echavarría, Camilo Alejandro Patiño Osorio.
 
-## Estructura del proyecto
+## Las dos configuraciones
+
+| | Simple (Configuración I) | Doble (Configuración II) |
+|---|---|---|
+| Estado | $x \in \mathbb{R}^4 = [\,p,\ \dot p,\ \theta,\ \dot\theta\,]$ | $x \in \mathbb{R}^6 = [\,p,\ \dot p,\ \theta_1,\ \dot\theta_1,\ \theta_2,\ \dot\theta_2\,]$ |
+| Física | Barra uniforme con inercia $I$, fricción $b$ | Masas puntuales $m_1, m_2$, sin fricción |
+| Modos inestables | 1 | 2 |
+| Controladores | LQR y Ackermann | LQR |
+| Pipeline | `main_simple.jl` | `main_double.jl` |
+
+Ambas configuraciones se linealizan alrededor del equilibrio superior
+($\theta = 0$, péndulo erguido), que es inestable, y se estabilizan por
+retroalimentación de estado $u = -Kx$.
+
+## Estructura del repositorio
 
 ```
-Proyecto/
-├── Project.toml        Entorno Julia (dependencias)
-├── Manifest.toml       Versiones exactas resueltas
-├── main_simple.jl      Pipeline del pendulo SIMPLE (Configuracion I)
-├── main_double.jl      Pipeline del pendulo DOBLE (Configuracion II)
-├── setup.jl            Instala las dependencias
+proyecto-pendulos/
+├── Project.toml            Entorno Julia (dependencias)
+├── Manifest.toml           Versiones exactas resueltas (entorno reproducible)
+├── setup.jl                Instala e instancia las dependencias
+├── main_simple.jl          Pipeline del pendulo SIMPLE (Configuracion I)
+├── main_double.jl          Pipeline del pendulo DOBLE (Configuracion II)
+├── README.md
 ├── src/
-│   ├── model.jl              Pendulo simple: parametros y EOM no lineales
-│   ├── model_double.jl       Pendulo doble: parametros y EOM no lineales
-│   ├── linearization.jl      Linealizacion (simple y doble), eigenvalores, Kalman
-│   ├── controller.jl         LQR (Riccati via Hamiltoniano) y Ackermann (genericos)
-│   ├── animation.jl          Animacion del pendulo simple (GLMakie)
-│   └── animation_double.jl   Animacion del pendulo doble (GLMakie)
-├── notebooks/          Notebooks de exploracion (Pluto)
-├── figures/            Graficas y animaciones generadas
-├── docs/               Documentacion del proyecto
-│   ├── *.md                  Documentos de investigacion (teoria)
-│   ├── resumen_tecnico/      Informe tecnico (LaTeX + PDF) + make_report_figs.jl
-│   └── resumen_ejecutivo/    Resumen ejecutivo (LaTeX + PDF, maximo 5 paginas)
-└── _archive/           Versiones anteriores (draft_v1, draft_v2, draft_v3)
+│   ├── model_simple.jl         Pendulo simple: parametros y EOM no lineales
+│   ├── model_double.jl         Pendulo doble: parametros y EOM no lineales
+│   ├── linearization.jl        Linealizacion (simple y doble), espectro, Kalman
+│   ├── controller.jl           LQR (Riccati via Hamiltoniano) y Ackermann (genericos)
+│   ├── animation_simple.jl     Animacion del pendulo simple (GLMakie)
+│   └── animation_double.jl     Animacion del pendulo doble (GLMakie)
+├── notebooks/                  Exploradores interactivos (Pluto)
+│   ├── 01_exploracion_simple.jl
+│   └── 02_exploracion_doble.jl
+├── figures/                    Salidas regenerables del pipeline (ignorada por git)
+└── docs/
+    ├── resumen_ejecutivo/      Resumen ejecutivo (LaTeX + PDF, maximo 5 paginas)
+    │   ├── resumen_ejecutivo.tex
+    │   └── resumen_ejecutivo.pdf
+    └── resumen_tecnico/        Informe tecnico (LaTeX + PDF)
+        ├── resumen_tecnico.tex
+        ├── resumen_tecnico.pdf
+        ├── make_report_figs.jl     Genera las figuras de respuesta del informe
+        └── figs/                   Figuras que el PDF necesita para compilar
 ```
 
-Las dos configuraciones comparten el modulo `Controller` (LQR, Ackermann,
-Riccati) y las funciones de analisis de `Linearization`, que son genericas en
-la dimension del estado.
+Las dos configuraciones comparten el módulo `Controller` (LQR, Ackermann,
+Riccati) y las funciones de análisis de `Linearization`, que son **genéricas en
+la dimensión del estado**: el mismo código analiza el sistema de $\mathbb{R}^4$ y
+el de $\mathbb{R}^6$ sin cambios.
 
-## Uso
+> **Nota sobre lo versionado.** `figures/` y `_archive/` están en `.gitignore`:
+> `figures/` son salidas regenerables (las crea `main_*.jl` al ejecutar) y
+> `_archive/` es material local. Sí se versionan el código, las fuentes LaTeX,
+> los PDF entregables y `docs/resumen_tecnico/figs/` (que el PDF necesita).
+
+## Requisitos
+
+- [Julia](https://julialang.org/) (probado con la versión del `Manifest.toml`).
+- Las dependencias se declaran en `Project.toml` y se fijan en `Manifest.toml`.
+
+Paquetes principales: `DifferentialEquations` (solver `Tsit5`),
+`CairoMakie` / `GLMakie` (gráficas y animación), `ControlSystems` y
+`MatrixEquations` (verificación), `Symbolics` (derivaciones) y
+`Pluto` / `PlutoUI` (notebooks interactivos).
+
+## Uso rápido
 
 ```bash
 # Instalar dependencias (una sola vez)
@@ -50,19 +89,24 @@ julia main_simple.jl
 julia main_double.jl
 ```
 
-O de forma interactiva:
+O de forma interactiva, activando el entorno del proyecto:
 
 ```bash
 julia --project=.
 julia> include("main_simple.jl")   # o include("main_double.jl")
 ```
 
-## Ejecución interactiva con Pluto (paso a paso)
+Cada pipeline ejecuta el flujo completo: define parámetros, simula la respuesta
+libre (sin control), linealiza y analiza (eigenvalores, controlabilidad,
+observabilidad), diseña el o los controladores, simula el lazo cerrado, genera
+las gráficas comparativas en `figures/` y produce la animación.
+
+## Exploración interactiva con Pluto (paso a paso)
 
 Los notebooks de `notebooks/` permiten correr todo el análisis de forma
 interactiva: se mueve un slider (una masa, una longitud, un peso del LQR) y
-Pluto recalcula automáticamente las matrices, los eigenvalores, la ganancia `K`,
-las gráficas y la animación. Este es el proceso completo.
+Pluto recalcula automáticamente las matrices, los eigenvalores, la ganancia $K$,
+las gráficas y la animación.
 
 ### Paso 0. Requisito (una sola vez)
 
@@ -77,7 +121,7 @@ julia setup.jl
 ### Paso 1. Abrir Julia en la carpeta del proyecto
 
 ```bash
-cd ruta/al/Proyecto
+cd ruta/al/proyecto-pendulos
 julia --project=.
 ```
 
@@ -94,34 +138,32 @@ Pluto.run()
 ```
 
 Esto abre Pluto en el navegador (normalmente en `http://localhost:1234`). La
-primera vez puede tardar un poco mientras precompila. Deja esta terminal
-abierta: es el servidor; si la cierras, se cierra Pluto.
+primera vez puede tardar mientras precompila. Deja esa terminal abierta: es el
+servidor; si la cierras, se cierra Pluto.
 
 ### Paso 3. Abrir un notebook
 
 En la pantalla de inicio de Pluto, en el campo **"Open a notebook"**, escribe o
-pega la ruta del notebook que quieras y pulsa **Open**:
+pega la ruta del notebook y pulsa **Open**:
 
-- `notebooks/01_exploracion_simple.jl` — péndulo simple (estado en R^4)
-- `notebooks/02_exploracion_doble.jl` — péndulo doble (estado en R^6)
+- `notebooks/01_exploracion_simple.jl` — péndulo simple (estado en $\mathbb{R}^4$)
+- `notebooks/02_exploracion_doble.jl` — péndulo doble (estado en $\mathbb{R}^6$)
 
-La primera celda activa el proyecto (`Pkg.activate("..")`) y la segunda carga
-los módulos de `src/`. La primera apertura precompila CairoMakie y
-DifferentialEquations (puede tardar varios minutos); las siguientes son rápidas.
+La primera celda activa el proyecto y la segunda carga los módulos de `src/`. La
+primera apertura precompila CairoMakie y DifferentialEquations (puede tardar
+varios minutos); las siguientes son rápidas.
 
 ### Paso 4. Interactuar con los sliders
 
-Al cambiar cualquier slider, todas las celdas que dependen de él se recalculan
-solas. Controles disponibles:
+Al cambiar cualquier slider, todas las celdas dependientes se recalculan solas.
 
 | Notebook | Sliders de parámetros | Sliders de control | Condición inicial |
 |---|---|---|---|
 | `01_exploracion_simple.jl` | `M`, `m`, `Lbar`, `g`, `b` | `Q11`, `Q33`, `R` | `theta0` |
 | `02_exploracion_doble.jl` | `M`, `m1`, `m2`, `L1`, `L2`, `g` | `Q` (pos, `theta1`, `theta2`), `R` | `theta1_0`, `theta2_0` |
 
-Verás reaccionar en vivo: el eigenvalor inestable, la ganancia `K`, los polos de
-lazo cerrado, las gráficas de respuesta y la animación (con su propio slider de
-tiempo).
+Verás reaccionar en vivo: el eigenvalor inestable, la ganancia $K$, los polos de
+lazo cerrado, las gráficas de respuesta y la animación.
 
 ### Paso 5. Exportar la animación (opcional)
 
@@ -140,20 +182,34 @@ y detén el servidor con `Ctrl-C` en la terminal de Julia.
 
 ## Resultados esperados
 
-- **Simple:** espectro de lazo abierto $\{+4.21,\,0,\,-0.077,\,-4.23\}$ (1 modo
-  inestable); LQR $K=(-3.16,-4.69,-45.39,-10.93)$; Ackermann con polos
-  $\{-1,-2,-3,-4\}$ da $K=(-1.75,-3.75,-39.01,-9.60)$.
-- **Doble:** espectro de lazo abierto $\{+8.57,\,+4.09,\,0,\,0,\,-4.09,\,-8.57\}$
-  (2 modos inestables); rangos de controlabilidad y observabilidad $6/6$;
+- **Simple:** espectro de lazo abierto $\{+4.21,\ 0,\ -0.077,\ -4.23\}$ (1 modo
+  inestable); LQR $K=(-3.16,\,-4.69,\,-45.39,\,-10.93)$; Ackermann con polos
+  $\{-1,-2,-3,-4\}$ da $K=(-1.75,\,-3.75,\,-39.01,\,-9.60)$.
+- **Doble:** espectro de lazo abierto
+  $\{+8.57,\ +4.09,\ 0,\ 0,\ -4.09,\ -8.57\}$ (2 modos inestables); rangos de
+  controlabilidad y observabilidad $6/6$;
   LQR $K=(3.16,\,5.82,\,-191.55,\,-10.99,\,228.32,\,36.14)$.
 
-Ambas configuraciones reproducen los valores del informe (`docs/resumen_tecnico/`).
+Ambas configuraciones reproducen los valores del informe técnico
+(`docs/resumen_tecnico/`).
+
+## Regenerar las figuras del informe
+
+Las figuras de respuesta temporal que aparecen en el informe técnico se generan
+con un script aparte (usa CairoMakie, salida estática):
+
+```bash
+julia --project=. docs/resumen_tecnico/make_report_figs.jl
+```
+
+Esto reescribe `docs/resumen_tecnico/figs/` y reporta las métricas (tiempo de
+asentamiento, esfuerzo de control pico) que se citan en la discusión.
 
 ## Nota sobre el entorno
 
-`Manifest.toml` proviene de la versión v3. Tras clonar o tras unificar el
-entorno, conviene ejecutar una vez:
+`Manifest.toml` fija las versiones exactas para reproducibilidad. Tras clonar el
+repositorio conviene ejecutar una vez:
 
 ```julia
-using Pkg; Pkg.activate("."); Pkg.instantiate(); Pkg.resolve()
+using Pkg; Pkg.activate("."); Pkg.instantiate()
 ```

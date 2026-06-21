@@ -17,10 +17,10 @@ using Pkg
 Pkg.activate(@__DIR__)
 
 # Cargar modulos del proyecto
-include("src/model.jl")
+include("src/model_simple.jl")
 include("src/linearization.jl")
 include("src/controller.jl")
-include("src/animation.jl")
+include("src/animation_simple.jl")
 
 using .Model
 using .Linearization

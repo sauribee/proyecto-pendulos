@@ -1,5 +1,5 @@
 # =============================================================================
-# model.jl -- Modelo fisico del pendulo invertido sobre carro
+# model_simple.jl -- Modelo fisico del pendulo invertido sobre carro
 # =============================================================================
 # Define parametros del sistema y ecuaciones de movimiento no lineales
 # derivadas del formalismo de Euler-Lagrange.

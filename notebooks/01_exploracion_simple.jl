@@ -32,7 +32,7 @@ end
 
 # ╔═╡ db1608db-421a-4171-97e6-7062a27ebf3b
 begin
-	include(joinpath(@__DIR__, "..", "src", "model.jl"))
+	include(joinpath(@__DIR__, "..", "src", "model_simple.jl"))
 	include(joinpath(@__DIR__, "..", "src", "linearization.jl"))
 	include(joinpath(@__DIR__, "..", "src", "controller.jl"))
 	

@@ -15,7 +15,7 @@ using Pkg
 const PROJ_ROOT = normpath(joinpath(@__DIR__, "..", ".."))
 Pkg.activate(PROJ_ROOT)
 
-include(joinpath(PROJ_ROOT, "src", "model.jl"))
+include(joinpath(PROJ_ROOT, "src", "model_simple.jl"))
 include(joinpath(PROJ_ROOT, "src", "model_double.jl"))
 include(joinpath(PROJ_ROOT, "src", "linearization.jl"))
 include(joinpath(PROJ_ROOT, "src", "controller.jl"))

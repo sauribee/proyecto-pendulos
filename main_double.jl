@@ -20,7 +20,7 @@ Pkg.activate(@__DIR__)
 include("src/model_double.jl")
 include("src/linearization.jl")
 include("src/controller.jl")
-include("src/animation.jl")
+include("src/animation_simple.jl")
 include("src/animation_double.jl")
 
 using .ModelDouble

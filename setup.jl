@@ -53,11 +53,11 @@ Estructura del proyecto:
     setup.jl             Este archivo
     Project.toml         Dependencias
     src/
-      model.jl              Pendulo simple: parametros y EOM
+      model_simple.jl       Pendulo simple: parametros y EOM
       model_double.jl       Pendulo doble: parametros y EOM
       linearization.jl      Linealizacion (simple y doble), eigenvalores, Kalman
       controller.jl         LQR, asignacion de polos (Ackermann), Riccati
-      animation.jl          Animacion del pendulo simple (GLMakie)
+      animation_simple.jl   Animacion del pendulo simple (GLMakie)
       animation_double.jl   Animacion del pendulo doble (GLMakie)
     notebooks/           Pluto notebooks
     figures/             Graficas y animaciones generadas
