@@ -1,0 +1,47 @@
+# =============================================================================
+# .gitignore -- Proyecto Pendulo Invertido (Algebra Lineal Aplicada)
+# =============================================================================
+# Se versiona: codigo fuente (src, main_*.jl, notebooks), entorno reproducible
+# (Project.toml y Manifest.toml), las fuentes LaTeX, los PDF entregables y las
+# figuras que el informe necesita para compilar (docs/resumen_tecnico/figs/).
+# Se ignora: borradores antiguos, salidas regenerables del pipeline y los
+# archivos auxiliares de LaTeX.
+# =============================================================================
+
+# --- Borradores y versiones anteriores (se conservan solo en local) ---
+_archive/
+
+# --- Salidas regenerables del pipeline (las crea main_*.jl al ejecutar) ---
+# Las figuras del informe (docs/resumen_tecnico/figs/) NO se ignoran: el PDF
+# las necesita. Esta carpeta son animaciones y graficas de exploracion.
+figures/
+
+# --- Julia ---
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+/docs/build/
+
+# --- LaTeX (archivos auxiliares regenerables) ---
+*.aux
+*.log
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.out
+*.toc
+*.bbl
+*.blg
+
+# --- Archivos temporales de trabajo y de compilacion ---
+_build_*.txt
+*_tmp.jl
+*_tmp.py
+
+# --- Editor / IDE ---
+.vscode/
+.idea/
+
+# --- Sistema ---
+.DS_Store
+Thumbs.db
