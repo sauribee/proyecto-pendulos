@@ -8,48 +8,33 @@ regulación lineal cuadrática (LQR). El proyecto estudia **dos configuraciones*
 de análisis y control.
 
 Universidad Nacional de Colombia, Sede Medellín — Facultad de Ciencias.
-Autores: Mateo Bedoya Rojas, Santiago Uribe Echavarría, Camilo Alejandro Patiño Osorio.
-
-## Las dos configuraciones
-
-| | Simple (Configuración I) | Doble (Configuración II) |
-|---|---|---|
-| Estado | $x \in \mathbb{R}^4 = [\,p,\ \dot p,\ \theta,\ \dot\theta\,]$ | $x \in \mathbb{R}^6 = [\,p,\ \dot p,\ \theta_1,\ \dot\theta_1,\ \theta_2,\ \dot\theta_2\,]$ |
-| Física | Barra uniforme con inercia $I$, fricción $b$ | Masas puntuales $m_1, m_2$, sin fricción |
-| Modos inestables | 1 | 2 |
-| Controladores | LQR y Ackermann | LQR |
-| Pipeline | `main_simple.jl` | `main_double.jl` |
-
-Ambas configuraciones se linealizan alrededor del equilibrio superior
-($\theta = 0$, péndulo erguido), que es inestable, y se estabilizan por
-retroalimentación de estado $u = -Kx$.
+Autores: Mateo Bedoya Rojas, Camilo Alejandro Patiño Osorio, Santiago Uribe Echavarría.
 
 ## Estructura del repositorio
 
 ```
 proyecto-pendulos/
-├── Project.toml            Entorno Julia (dependencias)
-├── Manifest.toml           Versiones exactas resueltas (entorno reproducible)
-├── setup.jl                Instala e instancia las dependencias
-├── main_simple.jl          Pipeline del pendulo SIMPLE (Configuracion I)
-├── main_double.jl          Pipeline del pendulo DOBLE (Configuracion II)
+├── Project.toml                  Entorno Julia (dependencias)
+├── Manifest.toml                 Versiones exactas resueltas (entorno reproducible)
+├── setup.jl                      Instala e instancia las dependencias
+├── main_simple.jl                Pipeline del pendulo SIMPLE (Configuracion I)
+├── main_double.jl                Pipeline del pendulo DOBLE (Configuracion II)
 ├── README.md
 ├── src/
-│   ├── model_simple.jl         Pendulo simple: parametros y EOM no lineales
-│   ├── model_double.jl         Pendulo doble: parametros y EOM no lineales
-│   ├── linearization.jl        Linealizacion (simple y doble), espectro, Kalman
-│   ├── controller.jl           LQR (Riccati via Hamiltoniano) y Ackermann (genericos)
-│   ├── animation_simple.jl     Animacion del pendulo simple (GLMakie)
-│   └── animation_double.jl     Animacion del pendulo doble (GLMakie)
-├── notebooks/                  Exploradores interactivos (Pluto)
+│   ├── model_simple.jl           Pendulo simple: parametros y EOM no lineales
+│   ├── model_double.jl           Pendulo doble: parametros y EOM no lineales
+│   ├── linearization.jl          Linealizacion (simple y doble), espectro, Kalman
+│   ├── controller.jl             LQR (Riccati via Hamiltoniano) y Ackermann (genericos)
+│   ├── animation_simple.jl       Animacion del pendulo simple (GLMakie)
+│   └── animation_double.jl       Animacion del pendulo doble (GLMakie)
+├── notebooks/                    Exploradores interactivos (Pluto)
 │   ├── 01_exploracion_simple.jl
-│   └── 02_exploracion_doble.jl
-├── figures/                    Salidas regenerables del pipeline (ignorada por git)
+│   └── 02_exploracion_doble.jl                  
 └── docs/
-    ├── resumen_ejecutivo/      Resumen ejecutivo (LaTeX + PDF, maximo 5 paginas)
+    ├── resumen_ejecutivo/      
     │   ├── resumen_ejecutivo.tex
     │   └── resumen_ejecutivo.pdf
-    └── resumen_tecnico/        Informe tecnico (LaTeX + PDF)
+    └── resumen_tecnico/        
         ├── resumen_tecnico.tex
         ├── resumen_tecnico.pdf
         ├── make_report_figs.jl     Genera las figuras de respuesta del informe
@@ -61,10 +46,6 @@ Riccati) y las funciones de análisis de `Linearization`, que son **genéricas e
 la dimensión del estado**: el mismo código analiza el sistema de $\mathbb{R}^4$ y
 el de $\mathbb{R}^6$ sin cambios.
 
-> **Nota sobre lo versionado.** `figures/` y `_archive/` están en `.gitignore`:
-> `figures/` son salidas regenerables (las crea `main_*.jl` al ejecutar) y
-> `_archive/` es material local. Sí se versionan el código, las fuentes LaTeX,
-> los PDF entregables y `docs/resumen_tecnico/figs/` (que el PDF necesita).
 
 ## Requisitos
 
