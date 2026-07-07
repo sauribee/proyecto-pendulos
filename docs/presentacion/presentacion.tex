@@ -715,7 +715,7 @@ qdd = cholesky(Symmetric(Mq)) \ rhs
   \begin{cajateo}{Soluci\'on del LQR}
     Si $(A,B)$ es controlable, el \'optimo es $\uv=-K\xv$ con
     $K=R^{-1}B^\top P$, donde $P\succ0$ es la soluci\'on estabilizante de la
-    ecuaci\'on algebraica de Riccati
+    ecuaci\'on algebraica de Riccati (CARE)
     \[
       A^\top P+PA-PBR^{-1}B^\top P+Q=0 .
     \]
@@ -725,11 +725,13 @@ qdd = cholesky(Symmetric(Mq)) \ rhs
 \end{frame}
 
 \begin{frame}{Resolver la Riccati: la matriz hamiltoniana}
-  La CARE es \emph{cuadr\'atica} en $P$; su soluci\'on se reduce a eigenvalores,
-  eigenvectores y subespacios invariantes:
+  La \textbf{CARE} (\emph{Continuous-time Algebraic Riccati Equation}: la
+  ecuaci\'on algebraica de Riccati de tiempo continuo) es \emph{cuadr\'atica}
+  en $P$; su soluci\'on se reduce a eigenvalores y subespacios invariantes:
   \[
     H=\begin{pmatrix}A & -BR^{-1}B^\top\\ -Q & -A^\top\end{pmatrix}\in\R^{2n\times2n}.
   \]
+  \vspace{-0.5em}
   \begin{enumerate}
     \small
     \item[$i$.] Calcular eigenvalores y eigenvectores de $H$.
@@ -739,9 +741,15 @@ qdd = cholesky(Symmetric(Mq)) \ rhs
           y formar $P=V_2V_1^{-1}$.
   \end{enumerate}
   \begin{cajaclave}
-    \small Que existan exactamente $n$ eigenvalores estables est\'a garantizado
-    por la estabilizabilidad de $(A,B)$ y la detectabilidad de $(Q^{1/2},A)$,
-    condiciones que ambos sistemas cumplen.
+    \footnotesize \textbf{?`Por qu\'e hay exactamente $n$ estables?} Como
+    $\xv^\top Q\,\xv=\lVert Q^{1/2}\xv\rVert^2$, donde $Q^{1/2}$ es la ra\'iz
+    cuadrada de $Q$ ($Q^{1/2}Q^{1/2}=Q$; aqu\'i,
+    $\mathrm{diag}(\sqrt{q_{ii}})$), el costo mide el estado a trav\'es de la salida
+    ficticia $\bm z=Q^{1/2}\xv$. En nuestro caso $(A,B)$ es \emph{controlable} y
+    $(Q^{1/2},A)$ es \emph{observable} ---ambos verificados con el criterio de
+    rango de Kalman---: ning\'un modo inestable escapa del control ni se oculta
+    del costo, y $H$ tiene exactamente $n$ eigenvalores estables y ninguno sobre
+    el eje imaginario.
   \end{cajaclave}
 \end{frame}
 

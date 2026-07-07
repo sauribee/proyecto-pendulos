@@ -1170,9 +1170,13 @@ asociados a $\Real(\lambda)<0$ (el \emph{subespacio invariante estable});
 partiendo esos eigenvectores en dos bloques $V_1,V_2\in\R^{n\times n}$, la
 solución es $P=V_2V_1^{-1}$. Que existan exactamente $n$ eigenvalores
 estables (y ninguno sobre el eje imaginario) está garantizado cuando
-$(A,B)$ es estabilizable y $(Q^{1/2},A)$ es detectable --- condiciones que
-aquí se cumplen, pues ambos sistemas son completamente controlables y $Q$
-pondera los ángulos. Una vez más, todo se
+$(A,B)$ es controlable y el par $(Q^{1/2},A)$ es observable, donde
+$Q^{1/2}$ es la raíz cuadrada de $Q$ ($Q^{1/2}Q^{1/2}=Q$): escribiendo
+$\xv^\top Q\,\xv=\lVert Q^{1/2}\xv\rVert^2$, el costo ``observa'' el estado a
+través de la salida ficticia $\bm z=Q^{1/2}\xv$, de modo que ningún modo
+inestable queda fuera del alcance del control ni oculto para el costo. Ambas
+condiciones se verifican aquí con los criterios de rango de Kalman
+(\cref{thm:kalman,thm:obs}). Una vez más, todo se
 reduce a eigenvalores, eigenvectores y subespacios invariantes.
 \end{observacion}
 
