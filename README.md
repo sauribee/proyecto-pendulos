@@ -21,8 +21,8 @@ proyecto-pendulos/
 ├── main_double.jl                Pipeline del pendulo DOBLE (Configuracion II)
 ├── README.md
 ├── src/
-│   ├── model_simple.jl           Pendulo simple: parametros y EOM no lineales
-│   ├── model_double.jl           Pendulo doble: parametros y EOM no lineales
+│   ├── model_simple.jl           Pendulo simple: parametros, EOM y lazo cerrado
+│   ├── model_double.jl           Pendulo doble: parametros, EOM y lazo cerrado
 │   ├── linearization.jl          Linealizacion (simple y doble), espectro, Kalman
 │   ├── controller.jl             LQR (Riccati via Hamiltoniano) y Ackermann (genericos)
 │   ├── animation_simple.jl       Animacion del pendulo simple (GLMakie)
@@ -34,10 +34,15 @@ proyecto-pendulos/
     ├── resumen_ejecutivo/      
     │   ├── resumen_ejecutivo.tex
     │   └── resumen_ejecutivo.pdf
-    └── resumen_tecnico/        
-        ├── resumen_tecnico.tex
-        ├── resumen_tecnico.pdf
-        ├── make_report_figs.jl     Genera las figuras de respuesta del informe
+    ├── resumen_tecnico/        
+    │   ├── resumen_tecnico.tex
+    │   ├── resumen_tecnico.pdf
+    │   ├── make_report_figs.jl     Genera las figuras de respuesta del informe
+    │   └── figs/                   Figuras que el PDF necesita para compilar
+    └── presentacion/           
+        ├── presentacion.tex        Diapositivas (Beamer, 16:9, 20 minutos)
+        ├── presentacion.pdf
+        ├── make_slide_figs.jl      Genera las figuras de las diapositivas
         └── figs/                   Figuras que el PDF necesita para compilar
 ```
 
@@ -185,6 +190,12 @@ julia --project=. docs/resumen_tecnico/make_report_figs.jl
 
 Esto reescribe `docs/resumen_tecnico/figs/` y reporta las métricas (tiempo de
 asentamiento, esfuerzo de control pico) que se citan en la discusión.
+
+Las figuras de las diapositivas se regeneran de forma análoga:
+
+```bash
+julia --project=. docs/presentacion/make_slide_figs.jl
+```
 
 ## Nota sobre el entorno
 

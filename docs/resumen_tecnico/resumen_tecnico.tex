@@ -142,9 +142,9 @@
     {\footnotesize\bfseries\color{acento2} INFORME TÉCNICO}\\[0.4em]
     {\LARGE\bfseries Análisis del Péndulo Invertido sobre un Carro \\[0.2em] mediante Álgebra Lineal Aplicada}\\[0.5em]
     {\large Espacio de Estados, Análisis Espectral y Control por \\ Realimentación de Estado en Dos Configuraciones}\\[1.2em]
-    {\normalsize Mateo Bedoya Rojas \quad\textbullet\quad Santiago Uribe Echavarría \quad\textbullet\quad Camilo Alejandro Patiño Osorio}\\[0.5em]
+    {\normalsize Mateo Bedoya Rojas \quad\textbullet\quad Camilo Alejandro Patiño Osorio \quad\textbullet\quad Santiago Uribe Echavarría}\\[0.5em]
     {\footnotesize
-    Facultad de Ciencias, Universidad Nacional de Colombia, Sede Medellín \\ \texttt{mabedoyar@unal.edu.co} \quad \texttt{sauribee@unal.edu.co} \quad \texttt{cpatinoo@unal.edu.co}}\\[0.8em]
+    Facultad de Ciencias, Universidad Nacional de Colombia, Sede Medellín \\ \texttt{mabedoyar@unal.edu.co} \quad \texttt{cpatinoo@unal.edu.co} \quad \texttt{sauribee@unal.edu.co}}\\[0.8em]
 \end{center}
 \vspace{0.4em}
 \hrule height 0.6pt
@@ -547,7 +547,8 @@ y la energía potencial, sumando cada masa por su altura,
 
 \textbf{Ecuaciones de movimiento.} Aplicando \cref{eq:EL} a las tres
 coordenadas (con $Q_x=u$, $Q_{\theta_1}=Q_{\theta_2}=0$) y agrupando, se
-llega a la forma matricial estándar de la mecánica
+llega a la forma matricial estándar de la mecánica ---conocida como
+\emph{ecuación del manipulador}---
 \begin{equation}\label{eq:nl-doble}
     \mathbf{M}(q)\,\ddot q+\mathbf{C}(q,\dot q)\,\dot q+\mathbf{G}(q)=\bm{F}\,u,
 \end{equation}
@@ -563,7 +564,7 @@ masa}
 con $c_1=\cos\theta_1$, $c_2=\cos\theta_2$,
 $c_{12}=\cos(\theta_1{-}\theta_2)$; \emph{vector de gravedad}
 \begin{equation}\label{eq:Gq}
-    \mathbf{G}(q)=\bigl(0,\ -(m_1{+}m_2)gL_1\sin\theta_1,\-m_2 gL_2\sin\theta_2\bigr)^\top;
+    \mathbf{G}(q)=\bigl(0,\ -(m_1{+}m_2)gL_1\sin\theta_1,\ -m_2 gL_2\sin\theta_2\bigr)^\top;
 \end{equation}
 y $\mathbf{C}(q,\dot q)\dot q$ los términos centrífugos y de Coriolis
 (\cref{anx:lag}). La matriz $\mathbf{M}(q)$ es simétrica y definida
@@ -1522,14 +1523,16 @@ reutiliza sin cambios el análisis y el control programados para el simple.
 \subsection*{Flujo de archivos}
 
 \begin{lstlisting}[language={},keywordstyle=]
-Proyecto/
+proyecto-pendulos/
   main_simple.jl        Pipeline del pendulo simple (Configuracion I)
   main_double.jl        Pipeline del pendulo doble  (Configuracion II)
   setup.jl              Instalacion de dependencias
   Project.toml          Entorno unico de todo el proyecto
+  Manifest.toml         Versiones exactas (reproducibilidad)
+  README.md             Instrucciones de uso
   src/
-    model_simple.jl     Simple: parametros y EOM no lineales (Euler-Lagrange)
-    model_double.jl     Doble:  parametros y EOM no lineales
+    model_simple.jl     Simple: parametros, EOM no lineales y lazo cerrado
+    model_double.jl     Doble:  parametros, EOM no lineales y lazo cerrado
     linearization.jl    Linealizacion (A,B,C,D), espectro y matrices de Kalman
     controller.jl       LQR (Riccati via Hamiltoniano) y Ackermann (genericos)
     animation_simple.jl Animacion del simple
@@ -1538,7 +1541,10 @@ Proyecto/
     01_exploracion_simple.jl   Explorador interactivo (Pluto) del simple
     02_exploracion_doble.jl    Explorador interactivo (Pluto) del doble
   figures/              Graficas y animaciones generadas
-  resumen_tecnico/      Este informe (LaTeX) y make_report_figs.jl
+  docs/
+    resumen_ejecutivo/  Resumen ejecutivo (LaTeX)
+    resumen_tecnico/    Este informe (LaTeX), make_report_figs.jl y figs/
+    presentacion/       Diapositivas (Beamer) y make_slide_figs.jl
 \end{lstlisting}
 
 El flujo de datos en cada \texttt{main\_*.jl} reproduce el orden lógico del
@@ -1588,7 +1594,9 @@ A[6, 5] = g * (m1 + m2) / (L2 * m1)
 
 Las ecuaciones no lineales del doble se obtienen armando la matriz de masa
 $\mathbf{M}(q)$ (\cref{eq:Mq}) y el lado derecho, y despejando las aceleraciones
-al resolver el sistema lineal $\mathbf{M}(q)\,\ddot q=\text{rhs}$.
+al resolver el sistema lineal $\mathbf{M}(q)\,\ddot q=\text{rhs}$ mediante la
+factorizaci\'on de Cholesky $\mathbf{M}=LL^\top$, aplicable por ser
+$\mathbf{M}(q)$ sim\'etrica y definida positiva.
 
 \begin{lstlisting}
 Mq = [ M+m1+m2          (m1+m2)*L1*c1     m2*L2*c2;
@@ -1597,7 +1605,7 @@ Mq = [ M+m1+m2          (m1+m2)*L1*c1     m2*L2*c2;
 rhs = [ F + (m1+m2)*L1*s1*w1^2 + m2*L2*s2*w2^2,
         (m1+m2)*g*L1*s1 - m2*L1*L2*s12*w2^2,
         m2*g*L2*s2 + m2*L1*L2*s12*w1^2 ]
-qdd = Mq \ rhs        # aceleraciones [ddx, ddtheta1, ddtheta2]
+qdd = cholesky(Symmetric(Mq)) \ rhs   # aceleraciones via Cholesky
 \end{lstlisting}
 
 \subsection*{Estado actual del proyecto}

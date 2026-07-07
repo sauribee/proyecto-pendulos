@@ -85,8 +85,11 @@ function nonlinear_eom_double!(dx, x, p, t)
             (m1 + m2) * g * L1 * s1 - m2 * L1 * L2 * s12 * omega2^2,
             m2 * g * L2 * s2 + m2 * L1 * L2 * s12 * omega1^2 ]
 
-    # Resolver M(q) qdd = rhs para las aceleraciones generalizadas
-    qdd = Mq \ rhs
+    # Resolver M(q) qdd = rhs para las aceleraciones generalizadas.
+    # M(q) es simetrica definida positiva (Hessiana de la energia cinetica),
+    # asi que el sistema se resuelve con la factorizacion de Cholesky
+    # M = L L' en lugar de una LU generica o de invertir la matriz.
+    qdd = cholesky(Symmetric(Mq)) \ rhs
 
     # Vector de derivadas del estado
     dx[1] = vel       # d(pos)/dt

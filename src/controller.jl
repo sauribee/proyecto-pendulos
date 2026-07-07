@@ -4,7 +4,11 @@
 # Implementa:
 #   1. LQR (Linear Quadratic Regulator) via ecuacion algebraica de Riccati
 #   2. Asignacion de polos via la formula de Ackermann
-#   3. Funciones auxiliares para simulacion en lazo cerrado
+#
+# Todas las rutinas son genericas en la dimension del estado: operan igual
+# sobre el sistema 4x4 del pendulo simple y el 6x6 del doble. Las ecuaciones
+# en lazo cerrado (fisica especifica de cada configuracion) viven en los
+# modulos de modelo: Model.closed_loop_eom! y ModelDouble.closed_loop_eom_double!.
 # =============================================================================
 
 module Controller
@@ -12,7 +16,7 @@ module Controller
 using LinearAlgebra
 using Printf
 
-export design_lqr, design_pole_placement, closed_loop_eom!
+export design_lqr, design_pole_placement
 export solve_care, print_controller_summary
 
 """
@@ -142,48 +146,6 @@ function design_pole_placement(A, B, desired_poles)
     lambda_cl = eigvals(A_cl)
 
     return (K=K, eigenvalues_cl=lambda_cl, A_cl=A_cl, desired=desired_poles)
-end
-
-"""
-    closed_loop_eom!(dx, x, p, t)
-
-Ecuaciones de movimiento en lazo cerrado para simulacion con DifferentialEquations.jl.
-Usa el modelo NO LINEAL con la ley de control u = -K x (retroalimentacion lineal).
-
-Parametros esperados en p:
-    p.params     -- SystemParams del modelo
-    p.K          -- Matriz de ganancia (1x4)
-    p.saturate   -- (opcional) limite de fuerza [N]
-
-Las EOM coinciden con Model.nonlinear_eom! (misma convencion de signos).
-"""
-function closed_loop_eom!(dx, x, p, t)
-    # Calcular fuerza de control: u = -K x
-    K = p.K
-    u = -dot(K[1, :], x)  # escalar para SISO
-
-    # Saturacion de actuador (opcional)
-    if haskey(p, :saturate)
-        u = clamp(u, -p.saturate, p.saturate)
-    end
-
-    # EOM no lineales con la fuerza calculada
-    sp = p.params
-    M, m, L, g, b, Ip = sp.M, sp.m, sp.L, sp.g, sp.b, sp.I
-
-    pos, vel, theta, omega = x
-    sin_t = sin(theta)
-    cos_t = cos(theta)
-
-    D = (M + m) * (Ip + m * L^2) - (m * L * cos_t)^2
-
-    rhs1 = u - b * vel + m * L * omega^2 * sin_t
-    rhs2 = m * g * L * sin_t
-
-    dx[1] = vel
-    dx[2] = ((Ip + m * L^2) * rhs1 - m * L * cos_t * rhs2) / D
-    dx[3] = omega
-    dx[4] = ((M + m) * rhs2 - m * L * cos_t * rhs1) / D
 end
 
 """

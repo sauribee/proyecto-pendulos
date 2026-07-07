@@ -32,6 +32,10 @@ figures/
 *.toc
 *.bbl
 *.blg
+# Auxiliares de Beamer (presentacion)
+*.nav
+*.snm
+*.vrb
 
 # --- Archivos temporales de trabajo y de compilacion ---
 _build_*.txt

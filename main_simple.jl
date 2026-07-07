@@ -1,5 +1,5 @@
 # =============================================================================
-# main.jl -- Script principal del proyecto: pendulo invertido
+# main_simple.jl -- Pipeline del pendulo invertido SIMPLE (Configuracion I)
 # =============================================================================
 # Ejecuta el pipeline completo:
 #   1. Definir parametros del sistema

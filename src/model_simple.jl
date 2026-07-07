@@ -15,7 +15,7 @@ module Model
 
 using LinearAlgebra
 
-export SystemParams, default_params, nonlinear_eom!, state_derivative
+export SystemParams, default_params, nonlinear_eom!, closed_loop_eom!, state_derivative
 
 """
 Parametros fisicos del sistema carro-pendulo.
@@ -94,6 +94,28 @@ function nonlinear_eom!(dx, x, p, t)
     dx[2] = x_ddot      # d(vel)/dt   = aceleracion del carro
     dx[3] = omega       # d(theta)/dt = velocidad angular
     dx[4] = theta_ddot  # d(omega)/dt = aceleracion angular
+end
+
+"""
+    closed_loop_eom!(dx, x, p, t)
+
+Ecuaciones en lazo cerrado con la ley de control u = -K x. Reutiliza el modelo
+no lineal pasando la fuerza ya calculada (asi no se duplica la fisica).
+
+Parametros esperados en p:
+    p.params    -- SystemParams del modelo
+    p.K         -- Matriz de ganancia (1x4)
+    p.saturate  -- (opcional) limite de fuerza [N]
+"""
+function closed_loop_eom!(dx, x, p, t)
+    K = p.K
+    u = -dot(K[1, :], x)  # escalar para SISO
+
+    if haskey(p, :saturate)
+        u = clamp(u, -p.saturate, p.saturate)
+    end
+
+    nonlinear_eom!(dx, x, (params=p.params, F=u), t)
 end
 
 """

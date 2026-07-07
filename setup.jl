@@ -24,6 +24,7 @@ deps = [
     "ControlSystems",           # Analisis de sistemas de control (apoyo y verificacion)
     "MatrixEquations",          # Ecuaciones matriciales (Riccati, Lyapunov)
     "Symbolics",                # Calculo simbolico (derivaciones)
+    "Pluto",                    # Servidor de notebooks interactivos
     "PlutoUI",                  # Widgets interactivos para Pluto
 ]
 
@@ -61,6 +62,7 @@ Estructura del proyecto:
       animation_double.jl   Animacion del pendulo doble (GLMakie)
     notebooks/           Pluto notebooks
     figures/             Graficas y animaciones generadas
+    docs/                Resumenes (LaTeX), presentacion y sus figuras
 
 Proximo paso:
   julia main_simple.jl     (o julia main_double.jl)
