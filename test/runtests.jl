@@ -47,6 +47,7 @@ using Test
 using LinearAlgebra
 using Random
 using ForwardDiff
+using DifferentialEquations
 using MatrixEquations: arec
 
 Random.seed!(20260731)
@@ -661,6 +662,54 @@ const R_STD = reshape([0.1], 1, 1)
             completo = tabla[1]
             @test completo.indices == [1, 2, 3, 4]
             @test minimo.margin_normalized < completo.margin_normalized / 50
+        end
+
+        @testset "el observador encoge la region de atraccion" begin
+            # El principio de separacion garantiza estabilidad del sistema
+            # LINEAL aumentado. No dice nada sobre la region de atraccion del
+            # NO LINEAL, y ahi estimar en vez de medir se paga caro: durante el
+            # transitorio inicial el control actua sobre una estimacion
+            # equivocada y saca a la planta del regimen donde la linealizacion
+            # vale.
+            p3 = default_params_triple()
+            ss = linearize_system_triple(p3)
+            K = design_lqr(ss.A, ss.B, default_weights(8), R_STD).K
+            obs = design_observer(ss.A, ss.C, 100.0 * Matrix(I, 8, 8),
+                                  Matrix(I, 4, 4))
+
+            converge(sol) = all(abs(sol.u[end][j]) < 0.02 for j in 3:2:7)
+
+            # Condicion inicial nominal del informe: los tres angulos a 0.1 rad.
+            x0 = zeros(8)
+            for j in 1:3
+                x0[2j+1] = 0.10
+            end
+
+            sol_full = solve(ODEProblem(closed_loop_eom_nlink!, copy(x0),
+                                        (0.0, 10.0),
+                                        (params=p3, K=K, saturate=150.0)),
+                             Tsit5(), saveat=0.01, verbose=false)
+            @test converge(sol_full)          # con estado completo, converge
+
+            sol_obs = solve(ODEProblem(observer_eom!, vcat(x0, zeros(8)),
+                                       (0.0, 10.0),
+                                       (params=p3, eom! = nonlinear_eom_triple!,
+                                        A=ss.A, B=ss.B, C=ss.C, K=K, L=obs.L,
+                                        saturate=150.0)),
+                            Tsit5(), saveat=0.01, verbose=false)
+            @test !converge(sol_obs)          # con observador, NO converge
+
+            # Desde una desviacion mas pequena si converge, y el error de
+            # estimacion decae como predice A - LC de Hurwitz.
+            z0 = zeros(16)
+            z0[3] = 0.10
+            sol_ok = solve(ODEProblem(observer_eom!, z0, (0.0, 10.0),
+                                      (params=p3, eom! = nonlinear_eom_triple!,
+                                       A=ss.A, B=ss.B, C=ss.C, K=K, L=obs.L,
+                                       saturate=150.0)),
+                           Tsit5(), saveat=0.01, verbose=false)
+            @test converge(sol_ok)
+            @test norm(sol_ok.u[end][1:8] .- sol_ok.u[end][9:16]) < 1e-4
         end
 
         @testset "Ackermann dual solo con una salida" begin

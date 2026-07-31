@@ -41,20 +41,40 @@ proyecto-pendulos/
 │   ├── 01_exploracion_simple.jl
 │   └── 02_exploracion_doble.jl                  
 └── docs/
-    ├── resumen_ejecutivo/      
-    │   ├── resumen_ejecutivo.tex
-    │   └── resumen_ejecutivo.pdf
-    ├── resumen_tecnico/        
-    │   ├── resumen_tecnico.tex
-    │   ├── resumen_tecnico.pdf
-    │   ├── make_report_figs.jl     Genera las figuras de respuesta del informe
-    │   └── figs/                   Figuras que el PDF necesita para compilar
-    └── presentacion/           
+    ├── guia_maestra.md             Documento maestro (teoria + codigo + defensa)
+    ├── segunda_entrega.md          Plan de trabajo de la segunda entrega
+    ├── resumen_tecnico/
+    │   ├── entrega_1/              Primera entrega (Configuraciones I y II)
+    │   │   ├── resumen_tecnico.tex
+    │   │   ├── resumen_tecnico.pdf
+    │   │   ├── make_report_figs.jl
+    │   │   └── figs/
+    │   └── entrega_2/              Segunda entrega (Configuracion III y analisis)
+    │       ├── resumen_tecnico.tex
+    │       ├── resumen_tecnico.pdf
+    │       ├── make_report_figs.jl
+    │       └── figs/
+    ├── resumen_ejecutivo/
+    │   ├── entrega_1/
+    │   │   ├── resumen_ejecutivo.tex
+    │   │   └── resumen_ejecutivo.pdf
+    │   └── entrega_2/
+    │       ├── resumen_ejecutivo.tex
+    │       └── resumen_ejecutivo.pdf
+    ├── segunda_entrega/            Atlas de operabilidad
+    │   ├── make_atlas_figs.jl
+    │   └── figs/                   atlas_a.png ... atlas_d.png
+    └── presentacion/               Solo primera entrega (la segunda no la lleva)
         ├── presentacion.tex        Diapositivas (Beamer, 16:9, 20 minutos)
         ├── presentacion.pdf
-        ├── make_slide_figs.jl      Genera las figuras de las diapositivas
-        └── figs/                   Figuras que el PDF necesita para compilar
+        ├── make_slide_figs.jl
+        └── figs/
 ```
+
+Cada entrega tiene su propio informe técnico y su resumen ejecutivo, con sus
+figuras. El informe de la segunda entrega toma además los cuatro mapas del atlas
+de `docs/segunda_entrega/figs/` mediante `\graphicspath`, para no duplicar ni el
+cálculo ni los archivos.
 
 Las tres configuraciones comparten los módulos `Controller` (LQR, Ackermann,
 Riccati), `Metrics` (margen PBH, condicionamiento, elipsoide de no saturación) y
@@ -232,16 +252,32 @@ Las figuras de respuesta temporal que aparecen en el informe técnico se generan
 con un script aparte (usa CairoMakie, salida estática):
 
 ```bash
-julia --project=. docs/resumen_tecnico/make_report_figs.jl
+julia --project=. docs/resumen_tecnico/entrega_1/make_report_figs.jl
 ```
 
-Esto reescribe `docs/resumen_tecnico/figs/` y reporta las métricas (tiempo de
-asentamiento, esfuerzo de control pico) que se citan en la discusión.
+Esto reescribe `docs/resumen_tecnico/entrega_1/figs/` y reporta las métricas
+(tiempo de asentamiento, esfuerzo de control pico) que se citan en la discusión.
 
-Las figuras de las diapositivas se regeneran de forma análoga:
+Las de la segunda entrega, análogamente:
+
+```bash
+julia --project=. -t auto docs/resumen_tecnico/entrega_2/make_report_figs.jl
+```
+
+Además de las figuras, este último imprime la tabla comparativa de las tres
+configuraciones, las fronteras prácticas, la tabla de subconjuntos de sensores y
+la comparación de regiones de atracción con y sin observador.
+
+Las figuras de las diapositivas (solo primera entrega) se regeneran así:
 
 ```bash
 julia --project=. docs/presentacion/make_slide_figs.jl
+```
+
+Para compilar cualquiera de los cuatro documentos, desde su propia carpeta:
+
+```bash
+latexmk -pdf resumen_tecnico.tex
 ```
 
 ## Observador de estado y dualidad
