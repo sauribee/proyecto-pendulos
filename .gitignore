@@ -16,6 +16,12 @@ _archive/
 # las necesita. Esta carpeta son animaciones y graficas de exploracion.
 figures/
 
+# --- Cache numerico del atlas de operabilidad ---
+# Los mapas del atlas (docs/segunda_entrega/figs/) SI se versionan, igual que
+# los del informe. Esta carpeta es solo el cache que evita recomputar los
+# barridos al regenerar las figuras: se rehace solo con make_atlas_figs.jl.
+docs/segunda_entrega/data/
+
 # --- Julia ---
 *.jl.cov
 *.jl.*.cov

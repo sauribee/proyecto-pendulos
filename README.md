@@ -242,6 +242,45 @@ Las figuras de las diapositivas se regeneran de forma análoga:
 julia --project=. docs/presentacion/make_slide_figs.jl
 ```
 
+## Atlas de operabilidad
+
+Barre el espacio de parámetros para identificar dónde el controlador funciona
+bien, dónde apenas y dónde ya es imposible:
+
+```bash
+julia --project=. -t auto docs/segunda_entrega/make_atlas_figs.jl
+```
+
+El flag `-t auto` importa: los mapas B y D integran el modelo no lineal en cada
+punto de la malla y se paralelizan sobre las filas. Los resultados se cachean en
+`docs/segunda_entrega/data/*.csv`; para forzar el recómputo, borrar esa carpeta
+o exportar `ATLAS_FORCE=1`.
+
+| Mapa | Ejes | Qué muestra |
+|---|---|---|
+| A | $(\ell_3/\ell_1,\ m_3/m_1)$ | Región estructuralmente sana (margen PBH) |
+| B | $(u_{\max},\ \theta_0)$ | **La frontera de operabilidad práctica** |
+| C | $(M,\ m_{\text{total}})$ | El óptimo interior de la masa del carro |
+| D | $(R,\ \theta_0)$ | Compromiso agresividad-robustez |
+
+Conviene distinguir **dos tipos de imposibilidad**:
+
+- **Estructural:** el par $(A,B)$ deja de ser controlable, o se acerca tanto que
+  ningún $K$ razonable sirve. Es una propiedad *del sistema*. Se mide con el
+  margen PBH.
+- **Práctica:** el sistema es controlable, pero el actuador satura, el riel se
+  acaba o el muestreo es muy lento. Es una propiedad *de la implementación*. Se
+  mide simulando el modelo no lineal y buscando la frontera por bisección.
+
+Cuál de las tres restricciones prácticas está activa **cambia con la
+configuración**:
+
+| Configuración | Cota elipsoidal $c^\star$ | Frontera real | Restricción activa |
+|---|---|---|---|
+| Simple | $0.962$ rad | $0.580$ rad | **Riel** (1.5 m) |
+| Doble | $0.234$ rad | $0.345$ rad | Saturación |
+| Triple | $0.152$ rad | $0.230$ rad | Saturación |
+
 ## Pruebas de regresión
 
 ```bash

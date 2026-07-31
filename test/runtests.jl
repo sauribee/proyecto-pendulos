@@ -37,9 +37,10 @@ include(joinpath(PROJ_ROOT, "src", "model_triple.jl"))
 include(joinpath(PROJ_ROOT, "src", "linearization.jl"))
 include(joinpath(PROJ_ROOT, "src", "controller.jl"))
 include(joinpath(PROJ_ROOT, "src", "metrics.jl"))
+include(joinpath(PROJ_ROOT, "src", "sweep.jl"))
 
 using .Model, .ModelDouble, .ModelNLink, .ModelTriple
-using .Linearization, .Controller, .Metrics
+using .Linearization, .Controller, .Metrics, .Sweep
 
 using Test
 using LinearAlgebra
@@ -490,5 +491,104 @@ const R_STD = reshape([0.1], 1, 1)
         @test issorted(conds)                   # crece monotonamente
         @test pbhs[1] / pbhs[5] < 1e3           # dos ordenes y medio
         @test conds[5] / conds[1] > 1e14        # catorce ordenes
+    end
+
+    # =======================================================================
+    @testset "7. Atlas de operabilidad" begin
+        lin = linearize_system_nlink
+        p3 = default_params_triple()
+
+        configs = [
+            ("simple", uniform_rods(1.0, [0.3], [1.0]; b=0.1), 197.4),
+            ("doble", point_masses(1.0, [0.3, 0.3], [0.5, 0.5]; b=0.0), 77.3),
+            ("triple", p3, 32.0),
+        ]
+
+        @testset "periodo de muestreo maximo" begin
+            for (nombre, p, meta) in configs
+                ss = lin(p)
+                n = size(ss.A, 1)
+                K = design_lqr(ss.A, ss.B, default_weights(n), R_STD).K
+                h = max_sampling_period(ss.A, ss.B, K)
+                @test 1000h ≈ meta rtol = 0.05
+
+                # A h_max el lazo esta al borde: un poco menos es de Schur y un
+                # poco mas no. Si no hubiera cambio de signo, la biseccion no
+                # significaria nada.
+                d_ok = discretize_zoh(ss.A, ss.B, 0.95h)
+                d_no = discretize_zoh(ss.A, ss.B, 1.10h)
+                @test is_schur(d_ok.Ad - d_ok.Bd * K)
+                @test !is_schur(d_no.Ad - d_no.Bd * K)
+            end
+        end
+
+        @testset "optimo interior de la masa del carro" begin
+            Ms = collect(range(0.04, 1.0, length=25))
+            res = sweep_1d(lin, p3, :M, Ms)
+            pbh = [r.pbh_normalized for r in res]
+            i = argmax(pbh)
+            # El maximo NO esta en un extremo del dominio: es un compromiso
+            # entre autoridad de control y acoplamiento con los eslabones.
+            @test 1 < i < length(Ms)
+            @test 0.05 < Ms[i] < 0.30
+
+            # c* y el margen PBH apuntan en direcciones OPUESTAS: no hay una
+            # unica "mejor" configuracion, depende de que se optimice.
+            @test issorted([r.c_star for r in res])
+        end
+
+        @testset "geometria derivada al barrer longitudes" begin
+            # Al alargar una barra uniforme deben recalcularse el centro de masa
+            # y la inercia. Olvidarlo da una barra que cambia de largo sin
+            # cambiar de inercia, que no es ningun sistema fisico.
+            @test infer_geometry(p3) == :uniform
+            q = set_param(p3, (:l, 3), 1.0)
+            @test q.a[3] ≈ 0.5
+            @test q.Il[3] ≈ (1/12) * q.m[3] * 1.0^2
+
+            pm = point_masses(1.0, [0.3, 0.3], [0.5, 0.5])
+            @test infer_geometry(pm) == :point
+            qm = set_param(pm, (:l, 2), 0.8)
+            @test qm.a[2] ≈ 0.8
+            @test qm.Il[2] ≈ 0.0
+        end
+
+        @testset "el eslabon superior corto es el peligroso" begin
+            res = sweep_1d(lin, p3, (:l, 3), [0.02, 0.1, 1/3, 1.0])
+            lambdas = [r.lambda_max for r in res]
+            # Alargar el eslabon superior FACILITA el control: es el efecto de
+            # la escoba larga en la palma de la mano, ahora cuantificado.
+            @test issorted(lambdas, rev=true)
+            @test lambdas[1] > 40.0
+            @test issorted([r.pbh_normalized for r in res])
+        end
+
+        @testset "cota elipsoidal dentro de la frontera de saturacion" begin
+            # c* certifica NO SATURACION mas convergencia del sistema LINEAL.
+            # La comparacion honesta es contra la frontera sin restriccion de
+            # riel: en el simple el riel es la restriccion activa y limita muy
+            # por debajo de lo que la saturacion permitiria.
+            for (nombre, p, _) in configs
+                ss = lin(p)
+                n = size(ss.A, 1)
+                lqr = design_lqr(ss.A, ss.B, default_weights(n), R_STD)
+                cs = nonsaturation_level(lqr.K, lqr.P, R_STD, ss.B, 50.0)
+                cota = max_axis_angle(lqr.P, cs, 3)
+                th_sat = max_recoverable_angle(p, lqr.K; umax=50.0, x_rail=1e6)
+                @test cota <= th_sat
+            end
+
+            # En el simple el riel muerde antes que el motor; en el triple no.
+            p1 = configs[1][2]
+            ss1 = lin(p1)
+            K1 = design_lqr(ss1.A, ss1.B, default_weights(4), R_STD).K
+            @test max_recoverable_angle(p1, K1; umax=50.0, x_rail=1.5) <
+                  max_recoverable_angle(p1, K1; umax=50.0, x_rail=1e6) - 0.05
+
+            ss3 = lin(p3)
+            K3 = design_lqr(ss3.A, ss3.B, default_weights(8), R_STD).K
+            @test max_recoverable_angle(p3, K3; umax=50.0, x_rail=1.5) ≈
+                  max_recoverable_angle(p3, K3; umax=50.0, x_rail=1e6) atol = 1e-3
+        end
     end
 end
