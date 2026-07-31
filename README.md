@@ -3,9 +3,10 @@
 Análisis y control del péndulo invertido sobre un carro mediante herramientas de
 álgebra lineal: representación en espacio de estados, análisis espectral,
 controlabilidad y observabilidad de Kalman, asignación de polos (Ackermann) y
-regulación lineal cuadrática (LQR). El proyecto estudia **dos configuraciones**
-—un péndulo simple y un péndulo doble— que comparten la misma maquinaria genérica
-de análisis y control.
+regulación lineal cuadrática (LQR). El proyecto estudia **tres configuraciones**
+—un péndulo simple, uno doble y uno triple— que comparten la misma maquinaria
+genérica de análisis y control, y las trata como tres instancias de una sola
+familia de $N$ eslabones.
 
 Universidad Nacional de Colombia, Sede Medellín — Facultad de Ciencias.
 Autores: Mateo Bedoya Rojas, Camilo Alejandro Patiño Osorio, Santiago Uribe Echavarría.
@@ -19,14 +20,21 @@ proyecto-pendulos/
 ├── setup.jl                      Instala e instancia las dependencias
 ├── main_simple.jl                Pipeline del pendulo SIMPLE (Configuracion I)
 ├── main_double.jl                Pipeline del pendulo DOBLE (Configuracion II)
+├── main_triple.jl                Pipeline del pendulo TRIPLE (Configuracion III)
 ├── README.md
 ├── src/
 │   ├── model_simple.jl           Pendulo simple: parametros, EOM y lazo cerrado
 │   ├── model_double.jl           Pendulo doble: parametros, EOM y lazo cerrado
-│   ├── linearization.jl          Linealizacion (simple y doble), espectro, Kalman
+│   ├── model_nlink.jl            Modelo GENERICO de N eslabones (contiene a I, II y III)
+│   ├── model_triple.jl           Pendulo triple: capa delgada sobre ModelNLink
+│   ├── linearization.jl          Linealizacion (simple, doble, generica en N), espectro, Kalman
 │   ├── controller.jl             LQR (Riccati via Hamiltoniano) y Ackermann (genericos)
+│   ├── metrics.jl                Margen PBH, condicionamiento, elipsoide, ZOH (genericos)
 │   ├── animation_simple.jl       Animacion del pendulo simple (GLMakie)
-│   └── animation_double.jl       Animacion del pendulo doble (GLMakie)
+│   ├── animation_double.jl       Animacion del pendulo doble (GLMakie)
+│   └── animation_triple.jl       Animacion de N eslabones (GLMakie)
+├── test/
+│   └── runtests.jl               Pruebas de regresion
 ├── notebooks/                    Exploradores interactivos (Pluto)
 │   ├── 01_exploracion_simple.jl
 │   └── 02_exploracion_doble.jl                  
@@ -46,10 +54,18 @@ proyecto-pendulos/
         └── figs/                   Figuras que el PDF necesita para compilar
 ```
 
-Las dos configuraciones comparten el módulo `Controller` (LQR, Ackermann,
-Riccati) y las funciones de análisis de `Linearization`, que son **genéricas en
-la dimensión del estado**: el mismo código analiza el sistema de $\mathbb{R}^4$ y
-el de $\mathbb{R}^6$ sin cambios.
+Las tres configuraciones comparten los módulos `Controller` (LQR, Ackermann,
+Riccati), `Metrics` (margen PBH, condicionamiento, elipsoide de no saturación) y
+las funciones de análisis de `Linearization`, todos **genéricos en la dimensión
+del estado**: el mismo código analiza el sistema de $\mathbb{R}^4$, el de
+$\mathbb{R}^6$ y el de $\mathbb{R}^8$ sin cambios.
+
+`ModelNLink` va un paso más allá: es un modelo genérico de $N$ eslabones que
+**contiene a las tres configuraciones como casos particulares** ($N=1$ con barra
+uniforme, $N=2$ con masas puntuales, $N=3$ con barras uniformes). Las
+Configuraciones I y II conservan su implementación propia e independiente, de
+modo que la coincidencia entre ambas es una prueba de regresión genuina y no un
+acto de fe.
 
 
 ## Requisitos
@@ -73,6 +89,9 @@ julia main_simple.jl
 
 # Pendulo doble (Configuracion II, estado en R^6)
 julia main_double.jl
+
+# Pendulo triple (Configuracion III, estado en R^8)
+julia main_triple.jl
 ```
 
 O de forma interactiva, activando el entorno del proyecto:
@@ -175,9 +194,35 @@ y detén el servidor con `Ctrl-C` en la terminal de Julia.
   $\{+8.57,\ +4.09,\ 0,\ 0,\ -4.09,\ -8.57\}$ (2 modos inestables); rangos de
   controlabilidad y observabilidad $6/6$;
   LQR $K=(3.16,\,5.82,\,-191.55,\,-10.99,\,228.32,\,36.14)$.
+- **Triple:** espectro de lazo abierto
+  $\{+18.06,\ +9.77,\ +4.38,\ 0,\ -0.06,\ -4.40,\ -9.78,\ -18.06\}$ (3 modos
+  inestables); rangos $8/8$;
+  LQR $K=(-3.16,\,-6.17,\,-317.43,\,-4.37,\,911.95,\,37.73,\,-667.37,\,-61.42)$
+  con $\|K\|_2 = 1176$.
 
-Ambas configuraciones reproducen los valores del informe técnico
-(`docs/resumen_tecnico/`).
+Las tres configuraciones reproducen los valores del informe técnico
+(`docs/resumen_tecnico/`) y están blindadas por `test/runtests.jl`.
+
+### Comparativa de las tres configuraciones
+
+Con los parámetros por defecto de cada una:
+
+| Cantidad | Simple | Doble | Triple |
+|---|---|---|---|
+| $n$ | 4 | 6 | 8 |
+| Modos inestables | 1 | 2 | 3 |
+| $\lambda_{\max}$ [s$^{-1}$] | 4.21 | 8.57 | 18.06 |
+| $\tau_{\text{caída}}$ [ms] | 237.5 | 116.7 | 55.4 |
+| $\operatorname{cond}\mathcal{C}$ | $3.6\times10^{1}$ | $1.6\times10^{4}$ | $2.2\times10^{8}$ |
+| $\hat\mu$ (margen PBH) | $1.72\times10^{-2}$ | $2.56\times10^{-3}$ | $4.92\times10^{-4}$ |
+| $\|K\|_2$ | 47.0 | 300.5 | 1176.0 |
+| $\theta_0$ garantizado sin saturar ($u_{\max}=50$ N) | $55.1°$ | $13.4°$ | $8.7°$ |
+| $h_{\max}$ (ZOH) [ms] | 197.4 | 77.3 | 32.0 |
+
+El rango de Kalman vale $n$ en las tres, pero $\operatorname{cond}\mathcal{C}$
+crece unos cuatro órdenes de magnitud por eslabón: es un teorema correcto que
+deja de ser un buen algoritmo. El margen PBH, en cambio, decae suavemente y sí
+sirve para comparar.
 
 ## Regenerar las figuras del informe
 

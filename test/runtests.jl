@@ -33,11 +33,13 @@ Pkg.activate(PROJ_ROOT)
 include(joinpath(PROJ_ROOT, "src", "model_simple.jl"))
 include(joinpath(PROJ_ROOT, "src", "model_double.jl"))
 include(joinpath(PROJ_ROOT, "src", "model_nlink.jl"))
+include(joinpath(PROJ_ROOT, "src", "model_triple.jl"))
 include(joinpath(PROJ_ROOT, "src", "linearization.jl"))
 include(joinpath(PROJ_ROOT, "src", "controller.jl"))
 include(joinpath(PROJ_ROOT, "src", "metrics.jl"))
 
-using .Model, .ModelDouble, .ModelNLink, .Linearization, .Controller, .Metrics
+using .Model, .ModelDouble, .ModelNLink, .ModelTriple
+using .Linearization, .Controller, .Metrics
 
 using Test
 using LinearAlgebra
@@ -156,6 +158,28 @@ const R_STD = reshape([0.1], 1, 1)
             end
         end
 
+        @testset "Configuracion III" begin
+            p3 = default_params_triple()
+            @test length(p3.m) == 3
+            @test p3.a ≈ p3.l ./ 2                      # barras uniformes
+            @test p3.Il ≈ (1/12) .* p3.m .* p3.l .^ 2
+            @test sum(p3.m) ≈ 0.6                       # misma masa que Config. II
+            @test sum(p3.l) ≈ 1.0                       # misma longitud que I y II
+
+            bc = link_couplings(p3)
+            @test bc.beta ≈ [0.16667, 0.1, 0.03333] atol = 1e-5
+            @test bc.J ≈ [0.05185, 0.02963, 0.00741] atol = 1e-5
+
+            # La capa delgada debe delegar exactamente en ModelNLink.
+            for _ in 1:10
+                x = [randn(), randn(), pi*(2rand()-1), randn(),
+                     pi*(2rand()-1), randn(), pi*(2rand()-1), randn()]
+                F = 10randn()
+                @test state_derivative_triple(x, p3, F) ==
+                      state_derivative_nlink(x, p3, F)
+            end
+        end
+
         @testset "friccion articular disipativa" begin
             # Con u = 0 y sin friccion del carro, la energia mecanica no puede
             # crecer. Es la unica comprobacion posible del signo del par
@@ -196,6 +220,30 @@ const R_STD = reshape([0.1], 1, 1)
             @test ss.B ≈ ad_input_jacobian(nonlinear_eom_double!, p_double, 6) atol = 1e-6
         end
 
+        @testset "jacobiano analitico vs automatico (triple)" begin
+            p3 = default_params_triple()
+            ss = linearize_system_triple(p3)
+            @test size(ss.A) == (8, 8)
+            @test size(ss.C) == (4, 8)
+            @test ss.A ≈ ad_jacobian(nonlinear_eom_triple!, p3, 8) atol = 1e-6
+            @test ss.B ≈ ad_input_jacobian(nonlinear_eom_triple!, p3, 8) atol = 1e-6
+        end
+
+        @testset "linearize_system_nlink reproduce I y II" begin
+            # El linealizador generico y los dos analiticos escritos a mano son
+            # implementaciones independientes: deben coincidir.
+            ss1 = linearize_system(default_params())
+            ss1g = linearize_system_nlink(uniform_rods(1.0, [0.3], [1.0]; b=0.1))
+            @test ss1.A ≈ ss1g.A atol = 1e-10
+            @test ss1.B ≈ ss1g.B atol = 1e-10
+
+            ss2 = linearize_system_double(default_params_double())
+            ss2g = linearize_system_nlink(
+                point_masses(1.0, [0.3, 0.3], [0.5, 0.5]; b=0.0))
+            @test ss2.A ≈ ss2g.A atol = 1e-10
+            @test ss2.B ≈ ss2g.B atol = 1e-10
+        end
+
         @testset "estructura del espectro sin friccion" begin
             # Sin friccion, buscar q(t) = v exp(lambda t) da el problema
             # generalizado G0 v = lambda^2 M0 v: los eigenvalores de A son las
@@ -206,6 +254,15 @@ const R_STD = reshape([0.1], 1, 1)
                                       b=0.0, I=(1/12) * 0.3 * 1.0^2)
             @test is_symmetric_spectrum(linearize_system(p_sin_fric).eigenvalues)
             @test is_symmetric_spectrum(linearize_system_double(p_double).eigenvalues)
+
+            # Se cumple para cualquier N: es una prediccion a priori, no un
+            # ajuste a posteriori.
+            for N in 1:5
+                p = uniform_rods(1.0, fill(0.6/N, N), fill(1.0/N, N); b=0.0)
+                ss = linearize_system_nlink(p)
+                @test is_symmetric_spectrum(ss.eigenvalues; tol=1e-7)
+                @test dominant_mode(ss.A).n_unstable == N
+            end
         end
 
         @testset "la friccion del carro rompe la simetria" begin
@@ -240,6 +297,34 @@ const R_STD = reshape([0.1], 1, 1)
 
             K2 = design_lqr(ss2.A, ss2.B, diagm([1.0, 0, 10, 0, 10, 0]), R_STD).K
             @test vec(K2) ≈ [3.16, 5.82, -191.55, -10.99, 228.32, 36.14] atol = 1e-2
+        end
+
+        @testset "Configuracion III" begin
+            ss3 = linearize_system_triple(default_params_triple())
+
+            @test sort(real.(ss3.eigenvalues), rev=true) ≈
+                  [18.0613, 9.7740, 4.3777, 0.0,
+                   -0.0625, -4.3990, -9.7813, -18.0647] atol = 1e-3
+            # Tres modos inestables, uno mas que el doble.
+            @test dominant_mode(ss3.A).n_unstable == 3
+
+            @test vec(ss3.B) ≈
+                  [0, 0.9455, 0, -3.6, 0, 0.9818, 0, -0.3273] atol = 1e-3
+
+            @test check_controllability(ss3).rank == 8
+            @test check_observability(ss3).rank == 8
+
+            K3 = design_lqr(ss3.A, ss3.B,
+                            diagm([1.0, 0, 10, 0, 10, 0, 10, 0]), R_STD).K
+            @test vec(K3) ≈ [-3.16, -6.17, -317.43, -4.37,
+                             911.95, 37.73, -667.37, -61.42] rtol = 1e-2
+            @test norm(K3) ≈ 1176.0 rtol = 1e-2
+
+            polos = sort(eigvals(ss3.A - ss3.B * K3), by=real)
+            @test real.(polos) ≈ [-18.14, -18.14, -10.02, -10.02,
+                                  -4.57, -4.57, -0.84, -0.84] atol = 1e-2
+            @test sort(abs.(imag.(polos))) ≈ [0.79, 0.79, 0.97, 0.97,
+                                              1.73, 1.73, 2.32, 2.32] atol = 1e-2
         end
 
         @testset "Ackermann sobre el simple" begin
@@ -298,6 +383,9 @@ const R_STD = reshape([0.1], 1, 1)
             ("doble", linearize_system_double(default_params_double()),
              diagm([1.0, 0, 10, 0, 10, 0]),
              (pbh=2.56e-3, cond=1.61e4, cstar=8.99, theta=0.234, lambda=8.5726)),
+            ("triple", linearize_system_triple(default_params_triple()),
+             diagm([1.0, 0, 10, 0, 10, 0, 10, 0]),
+             (pbh=4.92e-4, cond=2.157e8, cstar=3.73, theta=0.152, lambda=18.0613)),
         ]
 
         for (nombre, ss, Q, ref) in refs
@@ -351,12 +439,56 @@ const R_STD = reshape([0.1], 1, 1)
     end
 
     # =======================================================================
-    # Los conjuntos de la Configuracion III se agregan cuando exista
-    # model_triple.jl y linearize_system_triple (fase 4). Metas ya calculadas:
-    #   espectro {+18.0613, +9.7740, +4.3777, 0, -0.0625, -4.3990, -9.7813,
-    #             -18.0647}
-    #   B = (0, 0.9455, 0, -3.6, 0, 0.9818, 0, -0.3273)
-    #   K = (-3.16, -6.17, -317.43, -4.37, 911.95, 37.73, -667.37, -61.42)
-    #   PBH normalizado 4.92e-4, cond(Ctrb) 2.2e8, c*(50 N) 3.73
-    # =======================================================================
+    @testset "6. Degradacion con N" begin
+        # La tabla mas contundente del informe: el mismo algebra escala, pero
+        # el CONDICIONAMIENTO no. La familia esta normalizada (longitud total
+        # 1 m, masa total 0.6 kg, barras uniformes) para que la comparacion
+        # entre valores de N sea limpia. OJO: esta familia NO coincide con los
+        # parametros por defecto de I y II, que tienen otras masas.
+        metas = [
+            (N=1, lambda=4.51, pbh=1.31e-2, cond=4.8e1, normK=52.9),
+            (N=2, lambda=10.59, pbh=1.79e-3, cond=6.2e4, normK=248.7),
+            (N=3, lambda=18.06, pbh=4.92e-4, cond=2.2e8, normK=1176.0),
+            (N=4, lambda=26.54, pbh=1.91e-4, cond=1.7e12, normK=5266.8),
+            (N=5, lambda=35.64, pbh=9.03e-5, cond=3.0e16, normK=23221.9),
+        ]
+
+        for meta in metas
+            N = meta.N
+            @testset "N = $N" begin
+                p = uniform_rods(1.0, fill(0.6/N, N), fill(1.0/N, N); b=0.1)
+                ss = linearize_system_nlink(p)
+                n = 2 * (N + 1)
+
+                Q = diagm(vcat([1.0, 0.0], repeat([10.0, 0.0], N)))
+                K = design_lqr(ss.A, ss.B, Q, R_STD).K
+
+                @test dominant_mode(ss.A).lambda_max ≈ meta.lambda rtol = 0.01
+                @test dominant_mode(ss.A).n_unstable == N
+                @test pbh_controllability_margin_normalized(ss.A, ss.B) ≈
+                      meta.pbh rtol = 0.05
+                @test controllability_condition(ss.A, ss.B) ≈ meta.cond rtol = 0.15
+                @test norm(K) ≈ meta.normK rtol = 0.02
+
+                # El rango de Kalman sigue dando n aunque el condicionamiento
+                # se dispare: por eso hay que reportar el margen PBH.
+                @test pbh_controllability_margin(ss.A, ss.B) > 0
+            end
+        end
+
+        # El margen PBH decae SUAVEMENTE mientras cond(Ctrb) estalla: esa es
+        # justamente la razon de preferirlo como metrica de barrido.
+        pbhs = Float64[]
+        conds = Float64[]
+        for N in 1:5
+            p = uniform_rods(1.0, fill(0.6/N, N), fill(1.0/N, N); b=0.1)
+            ss = linearize_system_nlink(p)
+            push!(pbhs, pbh_controllability_margin_normalized(ss.A, ss.B))
+            push!(conds, controllability_condition(ss.A, ss.B))
+        end
+        @test issorted(pbhs, rev=true)          # decae monotonamente
+        @test issorted(conds)                   # crece monotonamente
+        @test pbhs[1] / pbhs[5] < 1e3           # dos ordenes y medio
+        @test conds[5] / conds[1] > 1e14        # catorce ordenes
+    end
 end
