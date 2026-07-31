@@ -12,6 +12,7 @@ using LinearAlgebra
 using Printf
 
 export linearize_system, linearize_system_double, StateSpaceModel, print_analysis
+export linearize_system_nlink, linearize_system_triple
 export controllability_matrix, observability_matrix
 export check_controllability, check_observability
 
@@ -170,6 +171,187 @@ function linearize_system_double(params)
     output_names = ["pos (posicion)", "theta1 (angulo 1)", "theta2 (angulo 2)"]
 
     return StateSpaceModel(A, B, C, D_mat, lambda, V, state_names, output_names)
+end
+
+"""
+    linearize_system_nlink(params) -> StateSpaceModel
+
+Linealiza el pendulo de N eslabones alrededor del equilibrio superior
+(todos los theta_j = 0, todo en reposo). El estado tiene dimension n = 2(N+1),
+en el orden intercalado del proyecto:
+
+    x = [pos, vel, theta_1, omega_1, ..., theta_N, omega_N]
+
+EL TRUCO DECISIVO. Evaluando en theta_j = 0 y qd = 0 se tiene cos -> 1,
+sin(theta_j) -> theta_j, cos(theta_j - theta_k) -> 1, y los terminos
+cuadraticos en las velocidades desaparecen por ser de segundo orden. Lo que
+queda es un sistema lineal con MATRIZ DE MASA CONSTANTE:
+
+    M0 qdd = G0 q - F0 qd + e1 u
+
+con M0 = M(q) evaluada en theta = 0, G0 = g diag(0, beta_1, ..., beta_N) y F0
+la matriz de friccion. Despejando qdd se obtienen los tres bloques
+
+    Acc = M0 \\ G0        d(qdd)/dq
+    Acv = -(M0 \\ F0)     d(qdd)/dqd
+    Bc  = M0 \\ e1        d(qdd)/du
+
+que se ensamblan directamente en orden intercalado. En orden por bloques la
+matriz seria [0 I; Acc Acv], que es esta misma conjugada por una permutacion:
+el espectro no cambia, pero se ensambla la version intercalada para ser
+coherente con las otras dos configuraciones.
+
+PREDICCION ESTRUCTURAL DEL ESPECTRO. Sin friccion, buscar soluciones de la
+forma q(t) = v exp(lambda t) da el problema generalizado G0 v = lambda^2 M0 v:
+los eigenvalores de A son las RAICES CUADRADAS de los de M0^-1 G0 y por tanto
+vienen en pares +-lambda. Como G0 tiene una fila y una columna nulas (el carro
+no tiene fuerza recuperadora), M0^-1 G0 es singular y aparece un cero doble en
+un bloque de Jordan 2x2:
+
+    spec(A) = {+-lambda_1, ..., +-lambda_N, 0, 0},   N modos inestables
+
+La friccion del carro rompe ligeramente esa simetria y desdobla el cero.
+
+El jacobiano es ANALITICO, no numerico. La coincidencia con la diferenciacion
+automatica de las EOM no lineales se comprueba en test/runtests.jl.
+
+`params` debe exponer los campos M, m, l, a, Il, g, b y c, es decir la
+estructura de ModelNLink.SystemParamsNLink.
+"""
+function linearize_system_nlink(params)
+    N = length(params.m)
+    d = N + 1        # grados de libertad: carro + N eslabones
+    n = 2 * d        # dimension del estado
+
+    g = params.g
+
+    # ---------------------------------------------------------------
+    # Agrupaciones de parametros (ver docs/Entrega_2/plan_de_trabajo.md, seccion 2.3)
+    #   beta_j = momento estatico del eslabon j y de lo que carga encima
+    #   J_j    = inercia efectiva respecto a su articulacion
+    #   Gam_jk = acoplamiento inercial entre los eslabones j y k
+    # ---------------------------------------------------------------
+    beta = zeros(N)
+    Jeff = zeros(N)
+    for j in 1:N
+        m_above = sum(params.m[j+1:end])
+        beta[j] = params.m[j] * params.a[j] + params.l[j] * m_above
+        Jeff[j] = params.Il[j] + params.m[j] * params.a[j]^2 +
+                  params.l[j]^2 * m_above
+    end
+
+    # ---------------------------------------------------------------
+    # M0 = M(q) evaluada en theta = 0 (todos los cosenos valen 1)
+    # ---------------------------------------------------------------
+    M0 = zeros(d, d)
+    M0[1, 1] = params.M + sum(params.m)
+    for j in 1:N
+        M0[1, j+1] = beta[j]
+        M0[j+1, 1] = beta[j]
+        M0[j+1, j+1] = Jeff[j]
+        for k in 1:N
+            j == k && continue
+            M0[j+1, k+1] = params.l[min(j, k)] * beta[max(j, k)]
+        end
+    end
+
+    # ---------------------------------------------------------------
+    # G0: gravedad linealizada. El signo POSITIVO de g beta_j es la firma
+    # de la inestabilidad, igual que el +(M+m) m g L / D0 de la Config. I.
+    # ---------------------------------------------------------------
+    G0 = zeros(d, d)
+    for j in 1:N
+        G0[j+1, j+1] = g * beta[j]
+    end
+
+    # ---------------------------------------------------------------
+    # F0: friccion. El carro aporta b; las articulaciones, si estan
+    # activas, aportan un bloque tridiagonal simetrico porque el par es
+    # RELATIVO entre eslabones contiguos.
+    # ---------------------------------------------------------------
+    F0 = zeros(d, d)
+    F0[1, 1] = params.b
+    if !isempty(params.c)
+        c = params.c
+        for j in 1:N
+            c_above = j < N ? c[j+1] : 0.0
+            F0[j+1, j+1] = c[j] + c_above
+            if j > 1
+                F0[j+1, j] = -c[j]
+            end
+            if j < N
+                F0[j+1, j+2] = -c_above
+            end
+        end
+    end
+
+    e1 = zeros(d)
+    e1[1] = 1.0
+
+    Acc = M0 \ G0
+    Acv = -(M0 \ F0)
+    Bc = M0 \ e1
+
+    # ---------------------------------------------------------------
+    # Ensamblaje en orden INTERCALADO
+    # ---------------------------------------------------------------
+    A = zeros(n, n)
+    B = zeros(n, 1)
+    for i in 1:d
+        A[2i-1, 2i] = 1.0              # d(q_i)/dt = qd_i
+        for k in 1:d
+            A[2i, 2k-1] = Acc[i, k]
+            A[2i, 2k] = Acv[i, k]
+        end
+        B[2i, 1] = Bc[i]
+    end
+
+    # ---------------------------------------------------------------
+    # C: se miden la posicion del carro y todos los angulos
+    # ---------------------------------------------------------------
+    C = zeros(d, n)
+    C[1, 1] = 1.0
+    for j in 1:N
+        C[j+1, 2j+1] = 1.0
+    end
+    D_mat = zeros(d, 1)
+
+    eig_result = eigen(A)
+
+    state_names = ["pos (posicion)", "vel (velocidad)"]
+    output_names = ["pos (posicion)"]
+    for j in 1:N
+        push!(state_names, "theta$j (angulo $j)")
+        push!(state_names, "omega$j (vel. angular $j)")
+        push!(output_names, "theta$j (angulo $j)")
+    end
+
+    return StateSpaceModel(A, B, C, D_mat, eig_result.values, eig_result.vectors,
+                           state_names, output_names)
+end
+
+"""
+    linearize_system_triple(params) -> StateSpaceModel
+
+Linealiza el pendulo invertido TRIPLE (Configuracion III) alrededor del
+equilibrio superior. El estado es de dimension 8:
+
+    x = [pos, vel, theta1, omega1, theta2, omega2, theta3, omega3]
+
+Es `linearize_system_nlink` restringida a N = 3. Con los parametros por defecto
+reproduce el espectro
+
+    {+18.0613, +9.7740, +4.3777, 0, -0.0625, -4.3990, -9.7813, -18.0647}
+
+es decir TRES modos inestables. El dominante implica una constante de tiempo de
+caida de 1/18.06 = 55 ms: el sistema se desploma cuatro veces mas rapido que la
+Configuracion I. La matriz C mide pos, theta1, theta2 y theta3 (4x8).
+"""
+function linearize_system_triple(params)
+    length(params.m) == 3 ||
+        error("linearize_system_triple espera 3 eslabones, recibio " *
+              string(length(params.m)))
+    return linearize_system_nlink(params)
 end
 
 """

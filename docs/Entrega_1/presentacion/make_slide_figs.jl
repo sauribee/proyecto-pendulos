@@ -1,16 +1,16 @@
 # =============================================================================
 # make_slide_figs.jl -- Genera las figuras de la presentacion (Beamer)
 # =============================================================================
-# Produce, en docs/presentacion/figs/, graficas con la paleta de la
+# Produce, en docs/Entrega_1/presentacion/figs/, graficas con la paleta de la
 # presentacion (azul marino, azul petroleo, verde gris, salvia, limon).
 # Reutiliza los modulos del proyecto; no duplica fisica ni algoritmos.
 #
 # Ejecutar desde la raiz del proyecto:
-#   julia --project=. docs/presentacion/make_slide_figs.jl
+#   julia --project=. docs/Entrega_1/presentacion/make_slide_figs.jl
 # =============================================================================
 
 using Pkg
-const PROJ_ROOT = normpath(joinpath(@__DIR__, "..", ".."))
+const PROJ_ROOT = normpath(joinpath(@__DIR__, "..", "..", ".."))
 Pkg.activate(PROJ_ROOT)
 
 include(joinpath(PROJ_ROOT, "src", "model_simple.jl"))
@@ -238,5 +238,5 @@ println("== DOBLE ==")
         settling_time(soll_d.t, th1_l), settling_time(soll_d.t, th2_l),
         maximum(abs.(u_l)), maximum(abs.(x_l)))
 
-println("== Figuras guardadas en docs/presentacion/figs/ ==")
+println("== Figuras guardadas en docs/Entrega_1/presentacion/figs/ ==")
 foreach(println, readdir(FIGS))
