@@ -169,7 +169,11 @@ end
 function mass_matrix(p::SystemParamsNLink, thetas, bc)
     N = length(p.m)
     d = N + 1
-    Mq = zeros(d, d)
+    # El tipo se promueve con el de los angulos para que la matriz admita
+    # numeros duales: asi ForwardDiff puede derivar a traves de la EOM y las
+    # pruebas contrastan el jacobiano analitico contra el automatico.
+    T = promote_type(eltype(thetas), Float64)
+    Mq = zeros(T, d, d)
 
     Mq[1, 1] = p.M + sum(p.m)
     for j in 1:N
@@ -234,7 +238,9 @@ function nonlinear_eom_nlink!(dx, x, p, t)
     # ---------------------------------------------------------------
     # Lado derecho: control, friccion, terminos centrifugos y gravedad
     # ---------------------------------------------------------------
-    rhs = zeros(d)
+    # Tipo promovido entre estado y fuerza, para admitir numeros duales.
+    T = promote_type(eltype(x), typeof(F))
+    rhs = zeros(T, d)
 
     # Fila del carro
     rhs[1] = F - sp.b * vel
@@ -303,8 +309,9 @@ end
 """
 Version funcional (no in-place) para uso rapido.
 """
-function state_derivative_nlink(x, params::SystemParamsNLink, F::Float64)
-    dx = zeros(2 * (length(params.m) + 1))
+function state_derivative_nlink(x, params::SystemParamsNLink, F)
+    T = promote_type(eltype(x), typeof(F))
+    dx = zeros(T, 2 * (length(params.m) + 1))
     nonlinear_eom_nlink!(dx, x, (params=params, F=F), 0.0)
     return dx
 end

@@ -197,6 +197,29 @@ Las figuras de las diapositivas se regeneran de forma análoga:
 julia --project=. docs/presentacion/make_slide_figs.jl
 ```
 
+## Pruebas de regresión
+
+```bash
+julia --project=. test/runtests.jl
+```
+
+Verifican de forma reproducible lo que antes solo se había comprobado a mano:
+
+- El modelo genérico de $N$ eslabones (`ModelNLink`) reproduce las
+  Configuraciones I y II, que son implementaciones **independientes** de la
+  misma física.
+- Los jacobianos **analíticos** escritos a mano en `linearization.jl` coinciden
+  con la diferenciación automática de las ecuaciones no lineales.
+- Los espectros y las ganancias $K$ publicados en los cuatro documentos.
+- `solve_care` contra `MatrixEquations.arec`, el residuo de la CARE,
+  $P = P^\top \succ 0$ y Cayley-Hamilton.
+- Los valores de referencia del módulo `Metrics`.
+
+> No se usa `Pkg.test()`: el repositorio es un **entorno** de Julia, no un
+> paquete (`Project.toml` no declara `name`, `uuid` ni `version`, y `Pkg.test()`
+> exige las tres). Ejecutar el archivo directamente da el mismo resultado sin
+> reestructurar el proyecto.
+
 ## Nota sobre el entorno
 
 `Manifest.toml` fija las versiones exactas para reproducibilidad. Tras clonar el

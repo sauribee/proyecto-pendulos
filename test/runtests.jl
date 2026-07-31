@@ -1,0 +1,362 @@
+# =============================================================================
+# runtests.jl -- Pruebas de regresion del proyecto
+# =============================================================================
+# Blindan los resultados publicados en los cuatro documentos y verifican de
+# forma reproducible lo que hasta ahora solo se habia comprobado a mano:
+#
+#   1. Modelos       -- el modelo generico de N eslabones reproduce las dos
+#                       configuraciones ya entregadas, que son implementaciones
+#                       INDEPENDIENTES de la misma fisica.
+#   2. Linealizacion -- los jacobianos ANALITICOS escritos a mano en
+#                       linearization.jl coinciden con la diferenciacion
+#                       automatica de las EOM no lineales.
+#   3. Publicados    -- los espectros y las ganancias que aparecen en el
+#                       informe, el resumen ejecutivo, la presentacion y el
+#                       README.
+#   4. Controller    -- solve_care contra MatrixEquations.arec, propiedades
+#                       algebraicas de la solucion de Riccati y Cayley-Hamilton.
+#   5. Metricas      -- los valores de referencia del modulo Metrics.
+#
+# Ejecucion:
+#     julia --project=. test/runtests.jl
+#
+# NOTA: no se usa Pkg.test(). El repositorio es un ENTORNO de Julia, no un
+# paquete: Project.toml no declara name, uuid ni version, y Pkg.test() exige
+# las tres. Correr el archivo directamente da exactamente el mismo resultado
+# sin obligar a reestructurar el proyecto.
+# =============================================================================
+
+using Pkg
+const PROJ_ROOT = dirname(@__DIR__)
+Pkg.activate(PROJ_ROOT)
+
+include(joinpath(PROJ_ROOT, "src", "model_simple.jl"))
+include(joinpath(PROJ_ROOT, "src", "model_double.jl"))
+include(joinpath(PROJ_ROOT, "src", "model_nlink.jl"))
+include(joinpath(PROJ_ROOT, "src", "linearization.jl"))
+include(joinpath(PROJ_ROOT, "src", "controller.jl"))
+include(joinpath(PROJ_ROOT, "src", "metrics.jl"))
+
+using .Model, .ModelDouble, .ModelNLink, .Linearization, .Controller, .Metrics
+
+using Test
+using LinearAlgebra
+using Random
+using ForwardDiff
+using MatrixEquations: arec
+
+Random.seed!(20260731)
+
+# ---------------------------------------------------------------------------
+# Utilidades
+# ---------------------------------------------------------------------------
+
+"""
+Jacobiano df/dx por diferenciacion automatica, evaluado en `x0`, para una EOM
+in-place de la forma eom!(dx, x, p, t) con fuerza de control nula.
+"""
+function ad_jacobian(eom!, params, n; x0=zeros(n))
+    f = function (x)
+        dx = zeros(eltype(x), n)
+        eom!(dx, x, (params=params, F=0.0), 0.0)
+        return dx
+    end
+    return ForwardDiff.jacobian(f, x0)
+end
+
+"""
+Jacobiano df/du por diferenciacion automatica, evaluado en el equilibrio.
+Devuelve un vector columna n x 1, con la misma forma que la matriz B.
+"""
+function ad_input_jacobian(eom!, params, n; x0=zeros(n))
+    f = function (u)
+        dx = zeros(typeof(u), n)
+        eom!(dx, x0, (params=params, F=u), 0.0)
+        return dx
+    end
+    return reshape(ForwardDiff.derivative(f, 0.0), n, 1)
+end
+
+"""
+Polinomio caracteristico de A evaluado en A, normalizado por norm(A)^n para
+que la tolerancia sea comparable entre sistemas de distinta escala.
+"""
+function cayley_hamilton_residual(A)
+    n = size(A, 1)
+    phi = Matrix{ComplexF64}(I, n, n)
+    for lambda in eigvals(A)
+        phi = phi * (A - lambda * I)
+    end
+    return norm(phi) / norm(A)^n
+end
+
+"""
+Comprueba que un espectro sin friccion tiene la estructura predicha:
+pares +-lambda mas un cero doble.
+"""
+function is_symmetric_spectrum(lambda; tol=1e-8)
+    re = sort(real.(lambda))
+    simetrico = maximum(abs.(re .+ reverse(re))) < tol
+    reales = maximum(abs.(imag.(lambda))) < tol
+    ceros = count(abs.(re) .< tol) == 2
+    return simetrico && reales && ceros
+end
+
+const R_STD = reshape([0.1], 1, 1)
+
+# ---------------------------------------------------------------------------
+
+@testset verbose = true "proyecto-pendulos" begin
+
+    # =======================================================================
+    @testset "1. Modelos" begin
+        p_simple = default_params()
+        p_double = default_params_double()
+        p_n1 = uniform_rods(1.0, [0.3], [1.0]; b=0.1)
+        p_n2 = point_masses(1.0, [0.3, 0.3], [0.5, 0.5]; b=0.0)
+        p_n3 = uniform_rods(1.0, fill(0.2, 3), fill(1/3, 3); b=0.1)
+
+        @testset "ModelNLink(N=1) reproduce Model" begin
+            # Los constructores deben coincidir con los parametros del informe.
+            @test p_n1.a[1] ≈ p_simple.L
+            @test p_n1.Il[1] ≈ p_simple.I
+
+            for _ in 1:20
+                x = [randn(), 2randn(), pi * (2rand() - 1), 2randn()]
+                F = 10randn()
+                @test state_derivative(x, p_simple, F) ≈
+                      state_derivative_nlink(x, p_n1, F) atol = 1e-10
+            end
+        end
+
+        @testset "ModelNLink(N=2) reproduce ModelDouble" begin
+            bc = link_couplings(p_n2)
+            # beta_1 = (m1+m2) L1, beta_2 = m2 L2, Gam_12 = m2 L1 L2
+            @test bc.beta ≈ [0.6 * 0.5, 0.3 * 0.5]
+            @test bc.J ≈ [0.6 * 0.5^2, 0.3 * 0.5^2]
+            @test bc.Gam[1, 2] ≈ 0.3 * 0.5 * 0.5
+
+            for _ in 1:20
+                x = [randn(), 2randn(), pi * (2rand() - 1), 2randn(),
+                     pi * (2rand() - 1), 2randn()]
+                F = 10randn()
+                @test state_derivative_double(x, p_double, F) ≈
+                      state_derivative_nlink(x, p_n2, F) atol = 1e-10
+            end
+        end
+
+        @testset "M(q) simetrica definida positiva" begin
+            for p in (p_n1, p_n2, p_n3)
+                N = length(p.m)
+                for _ in 1:50
+                    Mq = mass_matrix(p, pi .* (2rand(N) .- 1))
+                    @test Mq ≈ Mq'
+                    @test isposdef(Symmetric(Mq))
+                end
+            end
+        end
+
+        @testset "friccion articular disipativa" begin
+            # Con u = 0 y sin friccion del carro, la energia mecanica no puede
+            # crecer. Es la unica comprobacion posible del signo del par
+            # relativo entre eslabones: no hay implementacion de referencia.
+            p = uniform_rods(1.0, fill(0.2, 3), fill(1/3, 3);
+                             b=0.0, c=fill(0.05, 3))
+            bc = link_couplings(p)
+            energy = function (x)
+                th, om = x[3:2:end], x[4:2:end]
+                qd = vcat(x[2], om)
+                T = 0.5 * dot(qd, mass_matrix(p, th) * qd)
+                V = p.g * sum(bc.beta[j] * cos(th[j]) for j in 1:3)
+                return T + V
+            end
+            for _ in 1:50
+                x = [randn(), randn(), pi*(2rand()-1), randn(),
+                     pi*(2rand()-1), randn(), pi*(2rand()-1), randn()]
+                dx = state_derivative_nlink(x, p, 0.0)
+                @test dot(ForwardDiff.gradient(energy, x), dx) < 1e-8
+            end
+        end
+    end
+
+    # =======================================================================
+    @testset "2. Linealizacion" begin
+        p_simple = default_params()
+        p_double = default_params_double()
+
+        @testset "jacobiano analitico vs automatico (simple)" begin
+            ss = linearize_system(p_simple)
+            @test ss.A ≈ ad_jacobian(nonlinear_eom!, p_simple, 4) atol = 1e-6
+            @test ss.B ≈ ad_input_jacobian(nonlinear_eom!, p_simple, 4) atol = 1e-6
+        end
+
+        @testset "jacobiano analitico vs automatico (doble)" begin
+            ss = linearize_system_double(p_double)
+            @test ss.A ≈ ad_jacobian(nonlinear_eom_double!, p_double, 6) atol = 1e-6
+            @test ss.B ≈ ad_input_jacobian(nonlinear_eom_double!, p_double, 6) atol = 1e-6
+        end
+
+        @testset "estructura del espectro sin friccion" begin
+            # Sin friccion, buscar q(t) = v exp(lambda t) da el problema
+            # generalizado G0 v = lambda^2 M0 v: los eigenvalores de A son las
+            # raices cuadradas de los de M0^-1 G0 y vienen en pares +-lambda.
+            # G0 tiene una fila y una columna nulas (el carro no tiene fuerza
+            # recuperadora), asi que aparece un cero doble.
+            p_sin_fric = SystemParams(M=1.0, m=0.3, L=0.5, g=9.81,
+                                      b=0.0, I=(1/12) * 0.3 * 1.0^2)
+            @test is_symmetric_spectrum(linearize_system(p_sin_fric).eigenvalues)
+            @test is_symmetric_spectrum(linearize_system_double(p_double).eigenvalues)
+        end
+
+        @testset "la friccion del carro rompe la simetria" begin
+            # Con b = 0.1 el cero doble se desdobla en {0, -0.0769} y cada par
+            # +-lambda queda desbalanceado en la tercera cifra.
+            @test !is_symmetric_spectrum(linearize_system(p_simple).eigenvalues)
+        end
+    end
+
+    # =======================================================================
+    @testset "3. Valores publicados" begin
+        ss1 = linearize_system(default_params())
+        ss2 = linearize_system_double(default_params_double())
+
+        @testset "espectros de lazo abierto" begin
+            @test sort(real.(ss1.eigenvalues), rev=true) ≈
+                  [4.2105, 0.0, -0.0769, -4.2266] atol = 1e-3
+            @test sort(real.(ss2.eigenvalues), rev=true) ≈
+                  [8.5726, 4.0941, 0.0, 0.0, -4.0941, -8.5726] atol = 1e-3
+        end
+
+        @testset "rangos de Kalman" begin
+            @test check_controllability(ss1).rank == 4
+            @test check_observability(ss1).rank == 4
+            @test check_controllability(ss2).rank == 6
+            @test check_observability(ss2).rank == 6
+        end
+
+        @testset "ganancias LQR" begin
+            K1 = design_lqr(ss1.A, ss1.B, diagm([1.0, 0, 10, 0]), R_STD).K
+            @test vec(K1) ≈ [-3.16, -4.69, -45.39, -10.93] atol = 1e-2
+
+            K2 = design_lqr(ss2.A, ss2.B, diagm([1.0, 0, 10, 0, 10, 0]), R_STD).K
+            @test vec(K2) ≈ [3.16, 5.82, -191.55, -10.99, 228.32, 36.14] atol = 1e-2
+        end
+
+        @testset "Ackermann sobre el simple" begin
+            polos = [-1.0, -2.0, -3.0, -4.0]
+            res = design_pole_placement(ss1.A, ss1.B, polos)
+            @test vec(res.K) ≈ [-1.75, -3.75, -39.01, -9.60] atol = 1e-2
+            @test sort(real.(res.eigenvalues_cl)) ≈ sort(polos) atol = 1e-8
+        end
+    end
+
+    # =======================================================================
+    @testset "4. Controller" begin
+        casos = [
+            ("simple", linearize_system(default_params()), diagm([1.0, 0, 10, 0])),
+            ("doble", linearize_system_double(default_params_double()),
+             diagm([1.0, 0, 10, 0, 10, 0])),
+        ]
+
+        for (nombre, ss, Q) in casos
+            @testset "$nombre" begin
+                A, B = ss.A, ss.B
+                res = design_lqr(A, B, Q, R_STD)
+                P, K = res.P, res.K
+
+                # La implementacion propia contra la de la biblioteca.
+                # MatrixEquations ya estaba declarada en Project.toml y no se
+                # usaba en ningun archivo del repositorio.
+                X, _, _ = arec(A, B, R_STD, Q)
+                @test P ≈ X atol = 1e-8
+
+                @test P ≈ P'
+                @test isposdef(Symmetric(P))
+
+                # Residuo de la CARE: A'P + PA - P B R^-1 B' P + Q = 0
+                residuo = A' * P + P * A - P * B * inv(R_STD) * B' * P + Q
+                @test norm(residuo) < 1e-8
+
+                # Ganancia optima K = R^-1 B' P
+                @test K ≈ inv(R_STD) * B' * P
+
+                # Lazo cerrado estable
+                @test all(real.(eigvals(A - B * K)) .< 0)
+
+                # Cayley-Hamilton: el polinomio caracteristico de A anula a A
+                @test cayley_hamilton_residual(A) < 1e-10
+            end
+        end
+    end
+
+    # =======================================================================
+    @testset "5. Metricas" begin
+        refs = [
+            ("simple", linearize_system(default_params()),
+             diagm([1.0, 0, 10, 0]),
+             (pbh=1.72e-2, cond=3.60e1, cstar=22.94, theta=0.962, lambda=4.2105)),
+            ("doble", linearize_system_double(default_params_double()),
+             diagm([1.0, 0, 10, 0, 10, 0]),
+             (pbh=2.56e-3, cond=1.61e4, cstar=8.99, theta=0.234, lambda=8.5726)),
+        ]
+
+        for (nombre, ss, Q, ref) in refs
+            @testset "$nombre" begin
+                A, B, C = ss.A, ss.B, ss.C
+                res = design_lqr(A, B, Q, R_STD)
+
+                @test dominant_mode(A).lambda_max ≈ ref.lambda rtol = 1e-3
+                @test pbh_controllability_margin_normalized(A, B) ≈ ref.pbh rtol = 0.05
+                @test controllability_condition(A, B) ≈ ref.cond rtol = 0.05
+
+                c_star = nonsaturation_level(res.K, res.P, R_STD, B, 50.0)
+                @test c_star ≈ ref.cstar rtol = 0.05
+                @test max_axis_angle(res.P, c_star, 3) ≈ ref.theta rtol = 0.05
+
+                # El margen PBH solo es cero si el par no es controlable.
+                @test pbh_controllability_margin(A, B) > 0
+                @test pbh_observability_margin(A, C) > 0
+            end
+        end
+
+        @testset "discretizacion ZOH exacta" begin
+            ss = linearize_system(default_params())
+            A, B = ss.A, ss.B
+            for h in (0.001, 0.01, 0.1)
+                d = discretize_zoh(A, B, h)
+                # Ad debe ser exactamente la exponencial matricial.
+                @test d.Ad ≈ exp(A * h) atol = 1e-12
+                # Bd debe satisfacer la identidad de la solucion variacional:
+                # A Bd + B h ... se comprueba contra la serie de la integral.
+                serie = sum(A^k * h^(k + 1) / factorial(big(k + 1)) for k in 0:20)
+                @test d.Bd ≈ Float64.(serie * B) atol = 1e-12
+            end
+        end
+
+        @testset "criterio de Schur" begin
+            ss = linearize_system(default_params())
+            A, B = ss.A, ss.B
+            K = design_lqr(A, B, diagm([1.0, 0, 10, 0]), R_STD).K
+
+            # El sistema en lazo ABIERTO es inestable: nunca es de Schur.
+            @test !is_schur(discretize_zoh(A, B, 0.01).Ad)
+
+            # En lazo cerrado, con muestreo rapido es de Schur y con muestreo
+            # lento deja de serlo: hay un h_max finito entre ambos.
+            d_rapido = discretize_zoh(A, B, 0.01)
+            d_lento = discretize_zoh(A, B, 0.5)
+            @test is_schur(d_rapido.Ad - d_rapido.Bd * K)
+            @test !is_schur(d_lento.Ad - d_lento.Bd * K)
+        end
+    end
+
+    # =======================================================================
+    # Los conjuntos de la Configuracion III se agregan cuando exista
+    # model_triple.jl y linearize_system_triple (fase 4). Metas ya calculadas:
+    #   espectro {+18.0613, +9.7740, +4.3777, 0, -0.0625, -4.3990, -9.7813,
+    #             -18.0647}
+    #   B = (0, 0.9455, 0, -3.6, 0, 0.9818, 0, -0.3273)
+    #   K = (-3.16, -6.17, -317.43, -4.37, 911.95, 37.73, -667.37, -61.42)
+    #   PBH normalizado 4.92e-4, cond(Ctrb) 2.2e8, c*(50 N) 3.73
+    # =======================================================================
+end
