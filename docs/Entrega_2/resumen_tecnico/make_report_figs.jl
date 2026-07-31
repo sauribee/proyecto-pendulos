@@ -1,21 +1,21 @@
 # =============================================================================
 # make_report_figs.jl -- Figuras del informe tecnico de la SEGUNDA ENTREGA
 # =============================================================================
-# Produce, en resumen_tecnico/entrega_2/figs/, las graficas propias de este
+# Produce, en Entrega_2/resumen_tecnico/figs/, las graficas propias de este
 # informe, y reporta por consola las metricas que se citan en la discusion.
 # Usa CairoMakie (salida estatica).
 #
 # Los cuatro mapas del atlas de operabilidad NO se regeneran aqui: los produce
-# docs/segunda_entrega/make_atlas_figs.jl y el .tex los toma de esa carpeta
+# docs/Entrega_2/atlas/make_atlas_figs.jl y el .tex los toma de esa carpeta
 # mediante \graphicspath. Duplicar ese calculo no aportaria nada.
 #
 # Ejecutar desde la carpeta del proyecto:
-#   julia --project=. -t auto docs/resumen_tecnico/entrega_2/make_report_figs.jl
+#   julia --project=. -t auto docs/Entrega_2/resumen_tecnico/make_report_figs.jl
 # =============================================================================
 
 using Pkg
-# Este script vive en docs/resumen_tecnico/entrega_2/; la raiz del proyecto
-# esta tres niveles arriba (entrega_2 -> resumen_tecnico -> docs -> raiz).
+# Este script vive en docs/Entrega_2/resumen_tecnico/; la raiz del proyecto
+# esta tres niveles arriba (resumen_tecnico -> Entrega_2 -> docs -> raiz).
 const PROJ_ROOT = normpath(joinpath(@__DIR__, "..", "..", ".."))
 Pkg.activate(PROJ_ROOT)
 
@@ -37,7 +37,7 @@ using CairoMakie
 const FIGS = joinpath(@__DIR__, "figs")
 isdir(FIGS) || mkpath(FIGS)
 
-# Paleta del informe (la misma de entrega_1/make_report_figs.jl)
+# Paleta del informe (la misma de Entrega_1/resumen_tecnico/make_report_figs.jl)
 const C_LQR  = RGBf(0.122, 0.349, 0.553)   # azul
 const C_FREE = RGBf(0.706, 0.165, 0.165)   # rojo
 const C_ACK  = RGBf(0.851, 0.498, 0.114)   # naranja
@@ -348,4 +348,4 @@ for f in tabla
             f.observable ? "SI" : "NO", f.margin_normalized)
 end
 
-println("\nFiguras del informe de la segunda entrega guardadas en entrega_2/figs/")
+println("\nFiguras del informe de la segunda entrega guardadas en Entrega_2/resumen_tecnico/figs/")

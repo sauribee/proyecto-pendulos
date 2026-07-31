@@ -203,7 +203,7 @@ N eslabones con longitud total 1 m y masa total 0.6 kg:
     N = 2  ->  6.2e4
     N = 3  ->  2.2e8
     N = 4  ->  1.7e12
-    N = 5  ->  3.0e16
+    N = 5  ->  3.3e16
 
 Con N = 5 el condicionamiento alcanza 1/eps_maquina: el rango numerico de C es
 ruido, y sin embargo el sistema sigue siendo controlable en aritmetica exacta.

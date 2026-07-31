@@ -15,14 +15,14 @@
 # cachean en CSV para no recomputar al regenerar las figuras.
 #
 # Ejecucion (los hilos importan mucho aqui):
-#     julia --project=. -t auto docs/segunda_entrega/make_atlas_figs.jl
+#     julia --project=. -t auto docs/Entrega_2/atlas/make_atlas_figs.jl
 #
-# Para forzar el recomputo, borrar docs/segunda_entrega/data/ o exportar
+# Para forzar el recomputo, borrar docs/Entrega_2/atlas/data/ o exportar
 # ATLAS_FORCE=1.
 # =============================================================================
 
 using Pkg
-const PROJ_ROOT = dirname(dirname(@__DIR__))
+const PROJ_ROOT = dirname(dirname(dirname(@__DIR__)))
 Pkg.activate(PROJ_ROOT)
 
 include(joinpath(PROJ_ROOT, "src", "model_nlink.jl"))
@@ -38,7 +38,7 @@ using Printf
 using CairoMakie
 
 # ---------------------------------------------------------------------------
-# Paleta del proyecto (la misma de docs/presentacion/make_slide_figs.jl)
+# Paleta del proyecto (la misma de docs/Entrega_1/presentacion/make_slide_figs.jl)
 # ---------------------------------------------------------------------------
 const MARINO    = RGBf(27/255, 64/255, 121/255)    # 1B4079
 const PETROLEO  = RGBf(77/255, 124/255, 138/255)   # 4D7C8A
@@ -108,7 +108,6 @@ end
 const LIN = linearize_system_nlink
 const R_STD = reshape([0.1], 1, 1)
 const P_BASE = default_params_triple()
-const UMAX_NOMINAL = 150.0
 
 @printf("Hilos: %d\n\n", Threads.nthreads())
 
@@ -160,7 +159,8 @@ xs_a, ys_a, Z_a = cached("atlas_a", function ()
         for j in eachindex(ratios_m)
             p = set_param(P_BASE, (:l, 3), ratios_l[i] * P_BASE.l[1])
             p = set_param(p, (:m, 3), ratios_m[j] * P_BASE.m[1])
-            Z[i, j] = pbh_controllability_margin_normalized(LIN(p).A, LIN(p).B)
+            ss = LIN(p)
+            Z[i, j] = pbh_controllability_margin_normalized(ss.A, ss.B)
         end
     end
     return ratios_l, ratios_m, Z
@@ -491,4 +491,4 @@ for (nombre, p) in configs
 end
 println("    El margen relativo se estrecha al crecer la complejidad.")
 
-println("\nAtlas completo. Figuras en docs/segunda_entrega/figs/")
+println("\nAtlas completo. Figuras en docs/Entrega_2/atlas/figs/")

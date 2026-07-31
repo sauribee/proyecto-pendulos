@@ -452,8 +452,8 @@ const R_STD = reshape([0.1], 1, 1)
             (N=1, lambda=4.51, pbh=1.31e-2, cond=4.8e1, normK=52.9),
             (N=2, lambda=10.59, pbh=1.79e-3, cond=6.2e4, normK=248.7),
             (N=3, lambda=18.06, pbh=4.92e-4, cond=2.2e8, normK=1176.0),
-            (N=4, lambda=26.54, pbh=1.91e-4, cond=1.7e12, normK=5266.8),
-            (N=5, lambda=35.64, pbh=9.03e-5, cond=3.0e16, normK=23221.9),
+            (N=4, lambda=26.54, pbh=1.90e-4, cond=1.7e12, normK=5266.8),
+            (N=5, lambda=35.64, pbh=9.03e-5, cond=3.3e16, normK=23221.9),
         ]
 
         for meta in metas
@@ -591,6 +591,43 @@ const R_STD = reshape([0.1], 1, 1)
             K3 = design_lqr(ss3.A, ss3.B, default_weights(8), R_STD).K
             @test max_recoverable_angle(p3, K3; umax=50.0, x_rail=1.5) ≈
                   max_recoverable_angle(p3, K3; umax=50.0, x_rail=1e6) atol = 1e-3
+        end
+
+        @testset "barrido 2D" begin
+            # sweep_2d debe coincidir punto a punto con viability sobre los
+            # mismos parametros: es el mismo calculo, solo organizado en malla.
+            l3s = [0.2, 1/3]
+            m3s = [0.1, 0.2]
+            malla = sweep_2d(lin, p3, (:l, 3), l3s, (:m, 3), m3s)
+            @test size(malla) == (length(l3s), length(m3s))
+
+            for i in eachindex(l3s), j in eachindex(m3s)
+                @test malla[i, j].value1 == l3s[i]
+                @test malla[i, j].value2 == m3s[j]
+                q = set_param(set_param(p3, (:l, 3), l3s[i]), (:m, 3), m3s[j])
+                @test malla[i, j].pbh_normalized ≈ viability(lin, q).pbh_normalized
+            end
+        end
+
+        @testset "actuador minimo" begin
+            # Se mide sobre el simple, que es el mas barato de integrar, y sin
+            # restriccion de riel para aislar el efecto del actuador: es lo que
+            # min_actuator_force pretende medir.
+            p1 = configs[1][2]
+            ss1 = lin(p1)
+            K1 = design_lqr(ss1.A, ss1.B, default_weights(4), R_STD).K
+
+            umin = min_actuator_force(p1, K1; theta0=0.2, x_rail=1e6)
+            @test isfinite(umin)
+
+            # La biseccion devuelve una frontera real: con ese limite recupera
+            # y con un 20% menos ya no. Sin cambio de signo, el valor no
+            # significaria nada.
+            @test recovers(p1, K1, 0.2; umax=umin, x_rail=1e6)
+            @test !recovers(p1, K1, 0.2; umax=0.8 * umin, x_rail=1e6)
+
+            # Cuanto mas inclinado se arranca, mas motor hace falta.
+            @test min_actuator_force(p1, K1; theta0=0.35, x_rail=1e6) > umin
         end
     end
 

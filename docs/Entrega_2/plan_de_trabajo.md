@@ -130,7 +130,7 @@ hueco:
 3. **El criterio de rango es frágil y no se dice.** `rank(C_ctrl)` sobre la matriz
    de Kalman es una decisión binaria tomada con una tolerancia numérica implícita.
    Como se muestra en 3.3, para el triple $\operatorname{cond}(\mathcal{C}) \approx
-   2\times 10^{8}$ y para cinco eslabones $\approx 3\times 10^{16}$: en ese punto el
+   2\times 10^{8}$ y para cinco eslabones $\approx 3.3\times 10^{16}$: en ese punto el
    rango numérico **deja de significar algo**. Hay que sustituirlo (o acompañarlo)
    por una medida continua.
 
@@ -295,7 +295,10 @@ que produce una matriz de amortiguamiento tridiagonal simétrica.
 
 Las fórmulas de 2.3 y 2.4 están escritas para $N$ eslabones. Instanciándolas:
 
-**$N = 1$, barra uniforme** ($a_1 = L$, $I_1 = \tfrac{1}{12}m(2L)^2$, sin eslabones superiores):
+**$N = 1$, barra uniforme.** Con la notación de la Configuración I, $L$ es la
+distancia al centro de masa, de modo que la longitud completa de la barra es
+$\ell_1 = 2L$; entonces $a_1 = \ell_1/2 = L$ e
+$I_1 = \tfrac{1}{12}m\ell_1^2 = \tfrac{1}{12}m(2L)^2$, y no hay eslabones superiores:
 
 $$\beta_1 = mL, \qquad J_1 = I + mL^2$$
 
@@ -556,7 +559,7 @@ $N$ barras uniformes, $M=1$ kg, $b=0.1$), que permite comparar $N$ contra $N$:
 | 2 | 6 | $6.2\times10^{4}$ |
 | **3** | **8** | $2.2\times10^{8}$ |
 | 4 | 10 | $1.7\times10^{12}$ |
-| 5 | 12 | $3.0\times10^{16}$ |
+| 5 | 12 | $3.3\times10^{16}$ |
 
 Con $N=5$ el condicionamiento alcanza $1/\varepsilon_{\text{máq}}$: el rango
 numérico es **ruido**. Y sin embargo el sistema *sigue siendo* controlable en
@@ -589,8 +592,8 @@ Valores medidos (misma familia: longitud total 1 m, masa total 0.6 kg):
 | 1 | 4.51 | 222 | $1.31\times10^{-2}$ | $4.8\times10^{1}$ | 52.9 |
 | 2 | 10.59 | 94 | $1.79\times10^{-3}$ | $6.2\times10^{4}$ | 248.7 |
 | **3** | **18.06** | **55** | $4.92\times10^{-4}$ | $2.2\times10^{8}$ | 1176.0 |
-| 4 | 26.54 | 38 | $1.91\times10^{-4}$ | $1.7\times10^{12}$ | 5266.8 |
-| 5 | 35.64 | 28 | $9.03\times10^{-5}$ | $3.0\times10^{16}$ | 23221.9 |
+| 4 | 26.54 | 38 | $1.90\times10^{-4}$ | $1.7\times10^{12}$ | 5266.8 |
+| 5 | 35.64 | 28 | $9.03\times10^{-5}$ | $3.3\times10^{16}$ | 23221.9 |
 
 A diferencia de $\operatorname{cond}(\mathcal{C})$, que estalla, $\hat\mu$ decae
 suavemente: es una métrica **utilizable** para hacer mapas de calor.
@@ -812,7 +815,7 @@ src/sweep.jl       modulo Sweep      Barridos y fronteras
   max_sampling_period(A, B, K)
   print_sweep_summary(result)
 
-docs/segunda_entrega/make_atlas_figs.jl      Genera los mapas A-D
+docs/Entrega_2/atlas/make_atlas_figs.jl      Genera los mapas A-D
 ```
 
 `Metrics` y `Sweep` deben ser **genéricos en $n$**, igual que `Controller`: así
@@ -1048,7 +1051,7 @@ Anteponer este bloque a cualquiera de los prompts siguientes:
 
 ```text
 Contexto: proyecto-pendulos, trabajo de Algebra Lineal Aplicada (UNAL Medellin).
-Lee primero docs/guia_maestra.md (secciones 3 y 8) y docs/segunda_entrega.md
+Lee primero docs/guia_maestra.md (secciones 3 y 8) y docs/Entrega_2/plan_de_trabajo.md
 para entender la arquitectura y las convenciones.
 
 Convenciones obligatorias:
@@ -1088,7 +1091,7 @@ Constructores de conveniencia:
   uniform_rods(M, m, l; g, b)   barras uniformes: a = l/2, Il = (1/12) m l^2
   point_masses(M, m, l; g, b)   masas puntuales:  a = l,   Il = 0
 
-Fisica (deducida por Euler-Lagrange, ver docs/segunda_entrega.md seccion 2):
+Fisica (deducida por Euler-Lagrange, ver docs/Entrega_2/plan_de_trabajo.md seccion 2):
   beta_j  = m_j a_j + l_j * sum_{i>j} m_i
   J_j     = Il_j + m_j a_j^2 + l_j^2 * sum_{i>j} m_i
   Gam_jk  = l_min(j,k) * beta_max(j,k)
@@ -1123,7 +1126,7 @@ Reporta el error maximo obtenido en cada caso.
 
 ```text
 Implementa la Configuracion III (pendulo triple sobre carro, estado en R^8)
-siguiendo docs/segunda_entrega.md seccion 2.
+siguiendo docs/Entrega_2/plan_de_trabajo.md seccion 2.
 
 1. src/model_triple.jl (modulo ModelTriple): capa delgada sobre ModelNLink que
    expone la API del proyecto: SystemParamsTriple, default_params_triple(),
@@ -1225,7 +1228,7 @@ tabla):
 
 ```text
 Implementa src/sweep.jl (modulo Sweep) y
-docs/segunda_entrega/make_atlas_figs.jl, siguiendo docs/segunda_entrega.md
+docs/Entrega_2/atlas/make_atlas_figs.jl, siguiendo docs/Entrega_2/plan_de_trabajo.md
 seccion 3.
 
 A) Modulo Sweep, generico en n:
@@ -1255,7 +1258,7 @@ A) Modulo Sweep, generico en n:
 
   print_sweep_summary(result) con el formato de banner del proyecto.
 
-B) Script make_atlas_figs.jl (CairoMakie, paleta de docs/presentacion/
+B) Script make_atlas_figs.jl (CairoMakie, paleta de docs/Entrega_1/presentacion/
 make_slide_figs.jl: MARINO, PETROLEO, GRISVERDE, SALVIA, LIMON). Cuatro mapas:
 
   Mapa A: (l3/l1, m3/m1) -> margen PBH normalizado, escala log.
@@ -1265,7 +1268,7 @@ make_slide_figs.jl: MARINO, PETROLEO, GRISVERDE, SALVIA, LIMON). Cuatro mapas:
   Mapa C: (M, masa total del pendulo) -> margen PBH y norm(K), dos paneles.
   Mapa D: (R, theta0) -> theta_max.
 
-  Guardar en docs/segunda_entrega/figs/ como atlas_a.png ... atlas_d.png.
+  Guardar en docs/Entrega_2/atlas/figs/ como atlas_a.png ... atlas_d.png.
   Cachear los resultados numericos en un CSV para no recomputar.
   Imprimir por consola las tablas 1D que van al informe.
 
@@ -1274,8 +1277,8 @@ Resultados que el barrido DEBE reproducir (ya calculados, sirven de control):
     N=1: lambda_max=4.51,  pbh_norm=1.31e-2, cond=4.8e1,  norm(K)=52.9
     N=2: lambda_max=10.59, pbh_norm=1.79e-3, cond=6.2e4,  norm(K)=248.7
     N=3: lambda_max=18.06, pbh_norm=4.92e-4, cond=2.2e8,  norm(K)=1176.0
-    N=4: lambda_max=26.54, pbh_norm=1.91e-4, cond=1.7e12, norm(K)=5266.8
-    N=5: lambda_max=35.64, pbh_norm=9.03e-5, cond=3.0e16, norm(K)=23221.9
+    N=4: lambda_max=26.54, pbh_norm=1.90e-4, cond=1.7e12, norm(K)=5266.8
+    N=5: lambda_max=35.64, pbh_norm=9.03e-5, cond=3.3e16, norm(K)=23221.9
 - Barrido de la masa del carro M en el triple: el margen PBH normalizado NO es
   monotono, tiene un maximo interior cerca de M = 0.1 kg (valor ~1.64e-3).
   Confirma este optimo con resolucion fina en M entre 0.05 y 0.5 kg.
@@ -1337,7 +1340,7 @@ Criterio de aceptacion:
 ```text
 Implementa src/roa.jl, modulo ROA: estimacion de la region de atraccion del
 lazo cerrado, en tres capas de rigor decreciente en garantia y creciente en
-ajuste. Ver docs/segunda_entrega.md seccion M6.
+ajuste. Ver docs/Entrega_2/plan_de_trabajo.md seccion M6.
 
   ellipsoid_nonsaturation(K, P, R, B, umax)
       Capa 1 (exacta para el sistema lineal): c* = umax^2 / (K P^-1 K').
@@ -1361,7 +1364,7 @@ ajuste. Ver docs/segunda_entrega.md seccion M6.
 Figura: en el plano (theta1, omega1) con el resto del estado en cero, dibujar
 las tres regiones superpuestas (elipse de capa 1, elipse de capa 2, frontera
 numerica de capa 3) mas algunas trayectorias del modelo no lineal que converjan
-y otras que no. Guardar en docs/segunda_entrega/figs/roa_triple.png.
+y otras que no. Guardar en docs/Entrega_2/atlas/figs/roa_triple.png.
 
 Hazlo para las tres configuraciones y reporta la tabla comparativa. Con
 umax = 50 N los valores de la capa 1 sobre el eje theta1 ya estan calculados:
@@ -1423,7 +1426,7 @@ Documenta en README.md como ejecutarlo.
 
 ```text
 Extiende el proyecto con analisis de control digital, siguiendo
-docs/segunda_entrega.md seccion M9. Reutiliza Metrics.discretize_zoh.
+docs/Entrega_2/plan_de_trabajo.md seccion M9. Reutiliza Metrics.discretize_zoh.
 
 En src/metrics.jl (o en src/digital.jl si prefieres separarlo):
 
@@ -1457,7 +1460,7 @@ respectivamente, es decir, el margen se estrecha al crecer la complejidad.
 Si se sigue la ruta media o la ambiciosa, esto es lo que hay que tocar. Conviene
 tenerlo presente desde el principio para no dejarlo todo al final.
 
-### Informe técnico (`docs/resumen_tecnico/resumen_tecnico.tex`)
+### Informe técnico (`docs/Entrega_1/resumen_tecnico/resumen_tecnico.tex`)
 
 | Sección | Cambio |
 |---|---|
@@ -1578,5 +1581,5 @@ aparte, construida para que la comparación sea limpia.
 | 1 | 4 | 4.51 | 222 | $1.31\times10^{-2}$ | $4.8\times10^{1}$ | 52.9 |
 | 2 | 6 | 10.59 | 94 | $1.79\times10^{-3}$ | $6.2\times10^{4}$ | 248.7 |
 | 3 | 8 | 18.06 | 55 | $4.92\times10^{-4}$ | $2.2\times10^{8}$ | 1176.0 |
-| 4 | 10 | 26.54 | 38 | $1.91\times10^{-4}$ | $1.7\times10^{12}$ | 5266.8 |
-| 5 | 12 | 35.64 | 28 | $9.03\times10^{-5}$ | $3.0\times10^{16}$ | 23221.9 |
+| 4 | 10 | 26.54 | 38 | $1.90\times10^{-4}$ | $1.7\times10^{12}$ | 5266.8 |
+| 5 | 12 | 35.64 | 28 | $9.03\times10^{-5}$ | $3.3\times10^{16}$ | 23221.9 |

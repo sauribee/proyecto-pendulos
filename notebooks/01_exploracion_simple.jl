@@ -33,14 +33,25 @@ end
 # ╔═╡ db1608db-421a-4171-97e6-7062a27ebf3b
 begin
 	include(joinpath(@__DIR__, "..", "src", "model_simple.jl"))
+	include(joinpath(@__DIR__, "..", "src", "model_nlink.jl"))
 	include(joinpath(@__DIR__, "..", "src", "linearization.jl"))
 	include(joinpath(@__DIR__, "..", "src", "controller.jl"))
-	
+	include(joinpath(@__DIR__, "..", "src", "metrics.jl"))
+	include(joinpath(@__DIR__, "..", "src", "observer.jl"))
+	include(joinpath(@__DIR__, "..", "src", "sweep.jl"))
+
 	using .Model
+	using .ModelNLink
 	using .Linearization
 	using .Controller
-	
-	md"Módulos cargados correctamente"
+	using .Metrics
+	using .Observer
+	using .Sweep
+
+	md"""
+	Módulos cargados: `Model`, `ModelNLink`, `Linearization`, `Controller`,
+	`Metrics`, `Observer`, `Sweep`.
+	"""
 end
 
 # ╔═╡ be61f640-b844-420e-9f9d-af6ecaa5203a
@@ -1231,6 +1242,410 @@ begin
 	end
 end
 
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000001
+md"""
+---
+
+# Parte II -- Lo que agrega la segunda entrega
+
+Todo lo que sigue usa los módulos `Metrics`, `Observer` y `Sweep`, que son
+**genéricos en la dimensión del estado**: el mismo código corre sobre este
+sistema de ``\mathbb{R}^4``, sobre el doble de ``\mathbb{R}^6`` y sobre el
+triple de ``\mathbb{R}^8``. Reacciona a los mismos sliders de arriba.
+
+## 10. Métricas de viabilidad -- más allá del criterio de rango
+
+El criterio de Kalman ``\text{rank}\,\mathcal{C} = n`` es **binario** y se evalúa
+con una tolerancia numérica implícita. La matriz ``\mathcal{C}`` es una base de
+Krylov, mal condicionada. La versión cuantitativa del test de
+Popov-Belevitch-Hautus sustituye el rango por el menor valor singular:
+
+``\mu_{PBH} = \min_{\lambda\in\sigma(A)}\ \sigma_{\min}[\,A-\lambda I \mid B\,]``
+
+que por Eckart-Young es la distancia en norma 2 a perder la controlabilidad.
+"""
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000002
+begin
+	met_dm = dominant_mode(ss.A)
+	met_pbh = pbh_controllability_margin_normalized(ss.A, ss.B)
+	met_pbh_o = pbh_observability_margin_normalized(ss.A, ss.C)
+	met_cond = controllability_condition(ss.A, ss.B)
+	met_worst = pbh_controllability_profile(ss.A, ss.B)[1]
+
+	Markdown.parse("""
+	| Métrica | Valor |
+	|---|---|
+	| ``\\lambda_{\\max}`` | $(round(met_dm.lambda_max, digits=4)) s⁻¹ |
+	| ``\\tau_{caída} = 1/\\lambda_{\\max}`` | $(met_dm.n_unstable == 0 ? "—" : "$(round(1000*met_dm.tau_fall, digits=1)) ms") |
+	| Modos inestables | $(met_dm.n_unstable) |
+	| Margen PBH normalizado (control) | **$(@sprintf("%.4e", met_pbh))** |
+	| Margen PBH normalizado (observación) | $(@sprintf("%.4e", met_pbh_o)) |
+	| ``\\text{cond}\\,\\mathcal{C}`` | $(@sprintf("%.3e", met_cond)) |
+	| Modo más débil | ``\\lambda`` = $(round(real(met_worst.lambda), digits=3)) |
+
+	Compara con el doble (``\\hat\\mu \\approx 2.6\\times10^{-3}``) y el triple
+	(``4.9\\times10^{-4}``): el margen cae un orden de magnitud por eslabón,
+	pero **suavemente**, mientras que ``\\text{cond}\\,\\mathcal{C}`` estalla.
+	""")
+end
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000003
+md"""
+## 11. El elipsoide de no saturación
+
+Con ``V(\mathbf{x}) = \mathbf{x}^T P\mathbf{x}`` la función de Lyapunov del LQR,
+el mayor conjunto de nivel contenido en ``\{|K\mathbf{x}|\le u_{\max}\}`` sale de
+Cauchy-Schwarz: ``c^\star = u_{\max}^2/(KP^{-1}K^T)``. Dentro de ese elipsoide el
+control **nunca satura** y el sistema lineal converge.
+
+Sobre el eje del ángulo la garantía es ``|\theta_0| \le \sqrt{c^\star/P_{33}}``.
+"""
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000004
+md"**Límite del actuador u_max [N]:**"
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000005
+@bind met_umax PlutoUI.Slider(5.0:5.0:200.0, default=50.0, show_value=true)
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000006
+begin
+	met_cstar = nonsaturation_level(lqr.K, lqr.P, R_mat, ss.B, met_umax)
+	met_theta = max_axis_angle(lqr.P, met_cstar, 3)
+	met_x0 = zeros(4); met_x0[3] = 0.1
+	met_J = optimal_cost(lqr.P, met_x0)
+
+	Markdown.parse("""
+	| Cantidad | Valor |
+	|---|---|
+	| ``P_{33}`` | $(round(lqr.P[3,3], digits=4)) |
+	| ``c^\\star`` | $(round(met_cstar, digits=4)) |
+	| ``\\theta_0`` garantizado sin saturar | **$(round(met_theta, digits=4)) rad = $(round(rad2deg(met_theta), digits=2))°** |
+	| ``J^\\star`` desde ``\\theta_0 = 0.1`` rad | $(round(met_J, digits=4)) |
+
+	> **Honestidad sobre el alcance.** ``c^\\star`` certifica no saturación más
+	> convergencia del sistema **lineal**. No es la región de atracción no
+	> lineal: para eso haría falta acotar el residuo de la linealización.
+	""")
+end
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000007
+md"""
+## 12. Control digital -- periodo de muestreo máximo
+
+Con retenedor de orden cero, ``A_d = e^{Ah}`` y
+``B_d = \left(\int_0^h e^{A\tau}d\tau\right)B`` salen de **una sola** exponencial
+matricial por el truco de Van Loan. La estabilidad discreta pide que
+``A_d - B_dK`` sea de **Schur**: todos los eigenvalores dentro del círculo
+unitario.
+"""
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000008
+begin
+	met_hmax = max_sampling_period(ss.A, ss.B, lqr.K)
+	Markdown.parse("""
+	| Cantidad | Valor |
+	|---|---|
+	| ``h_{\\max}`` | **$(round(1000*met_hmax, digits=1)) ms** (``\\ge`` $(round(1/met_hmax, digits=1)) Hz) |
+	| ``1/\\lambda_{\\max}`` | $(met_dm.n_unstable == 0 ? "—" : "$(round(1000*met_dm.tau_fall, digits=1)) ms") |
+	| ``h_{\\max}\\,\\lambda_{\\max}`` | $(round(met_hmax*met_dm.lambda_max, digits=3)) |
+
+	El margen relativo se estrecha al crecer la complejidad: 0.83 aquí, 0.66 en
+	el doble, 0.58 en el triple.
+	""")
+end
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000009
+md"**Periodo de muestreo h a probar [ms]** -- cruza ``h_{\max}`` y mira los polos salir del círculo:"
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000010
+@bind met_h_ms PlutoUI.Slider(1.0:2.0:400.0, default=50.0, show_value=true)
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000011
+let
+	h = met_h_ms / 1000
+	d = discretize_zoh(ss.A, ss.B, h)
+	lam_d = eigvals(d.Ad - d.Bd * lqr.K)
+	radio = maximum(abs.(lam_d))
+	ok = is_schur(d.Ad - d.Bd * lqr.K)
+
+	fig = Figure(size=(620, 470))
+	ax = Axis(fig[1, 1],
+		title = @sprintf("Polos discretos con h = %.0f ms  (radio %.4f)", met_h_ms, radio),
+		xlabel = "Re(z)", ylabel = "Im(z)", aspect = DataAspect())
+	tt = range(0, 2pi, length=200)
+	lines!(ax, cos.(tt), sin.(tt), color=:gray50, linewidth=1.5, linestyle=:dash)
+	hlines!(ax, [0.0], color=:gray85, linewidth=0.5)
+	vlines!(ax, [0.0], color=:gray85, linewidth=0.5)
+	scatter!(ax, real.(lam_d), imag.(lam_d), markersize=14,
+		color = ok ? RGBf(0.17, 0.45, 0.71) : RGBf(0.84, 0.15, 0.16))
+	text!(ax, 0.0, -1.35,
+		text = ok ? "DENTRO del círculo: el lazo digital es estable" : "FUERA: el lazo digital diverge",
+		align = (:center, :center), fontsize = 13,
+		color = ok ? :gray25 : RGBf(0.7, 0.1, 0.1))
+	limits!(ax, -1.5, 1.5, -1.5, 1.5)
+	fig
+end
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000012
+md"""
+## 13. El observador de Luenberger
+
+Hasta aquí el control ha sido ``u = -K\mathbf{x}``, con el estado **completo**.
+En la práctica no se mide la velocidad angular. Como
+``\text{rank}\,\mathcal{O} = 4``, el estado se puede reconstruir:
+
+``\dot{\hat{\mathbf{x}}} = A\hat{\mathbf{x}} + Bu + L(\mathbf{y} - C\hat{\mathbf{x}})``,
+con ``\dot{\mathbf{e}} = (A - LC)\mathbf{e}``
+
+Y por la **dualidad de Kalman**, ``L = \text{lqr}(A^T, C^T, Q_o, R_o)^T``: se
+reutiliza la misma ecuación de Riccati, sin escribir un solo algoritmo nuevo.
+"""
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000013
+md"**Confianza en los sensores** -- ``Q_o = 10^{\alpha}I``; más alto = observador más rápido:"
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000014
+@bind obs_log_qo PlutoUI.Slider(0.0:0.5:5.0, default=2.0, show_value=true)
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000015
+begin
+	obs_Qo = (10.0^obs_log_qo) * Matrix(I, 4, 4)
+	obs_Ro = Matrix(I, size(ss.C, 1), size(ss.C, 1))
+	obs_res = design_observer(ss.A, ss.C, obs_Qo, obs_Ro)
+	obs_sep = check_separation(ss.A, ss.B, ss.C, lqr.K, obs_res.L)
+	obs_M = augmented_closed_loop(ss.A, ss.B, ss.C, lqr.K, obs_res.L)
+
+	obs_rows = map(enumerate(sort(obs_res.eigenvalues_obs, by=real))) do (i, lam)
+		rp = round(real(lam), digits=3); ip = round(imag(lam), digits=3)
+		"| ``\\nu_{$i}`` | $(abs(ip) < 1e-9 ? "$rp" : "$rp + $(ip)i") |"
+	end
+
+	Markdown.parse("""
+	### Polos del observador ``\\sigma(A - LC)``
+
+	| Polo | Valor |
+	|---|---|
+	$(join(obs_rows, "\n"))
+
+	``\\lVert L\\rVert`` = $(round(norm(obs_res.L), digits=3)) ·
+	Observador $(all(real.(obs_res.eigenvalues_obs) .< 0) ? "**estable**" : "INESTABLE")
+
+	### Principio de separación
+
+	En coordenadas ``(\\mathbf{x}, \\mathbf{e})`` la matriz aumentada es
+	**triangular por bloques**, de modo que
+	``\\sigma = \\sigma(A-BK)\\cup\\sigma(A-LC)`` y el controlador y el
+	observador se diseñan por separado.
+
+	| Verificación | Resultado |
+	|---|---|
+	| Bloque inferior izquierdo nulo | $(all(obs_M[5:8, 1:4] .== 0) ? "SI" : "no") |
+	| Error máximo al emparejar espectros | $(@sprintf("%.3e", obs_sep.max_error)) |
+	| Principio de separación | $(obs_sep.holds ? "**SE CUMPLE**" : "NO se cumple") |
+	""")
+end
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000016
+md"""
+### ¿Qué sensores hacen falta?
+
+De los ``2^2 - 1 = 3`` subconjuntos no vacíos de ``\{x, \theta\}``, ¿cuáles
+conservan la observabilidad? El margen PBH de observabilidad distingue lo que el
+rango no puede: *observable* no es lo mismo que *practicable*.
+"""
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000017
+begin
+	obs_tabla = sensor_subset_analysis(ss.A, ss.C, ["x", "theta"])
+	obs_filas = map(obs_tabla) do f
+		"| $(join(f.labels, " + ")) | $(f.rank)/4 | $(f.observable ? "SI" : "**NO**") | $(@sprintf("%.3e", f.margin_normalized)) |"
+	end
+	Markdown.parse("""
+	| Sensores | rank ``\\mathcal{O}`` | Observable | Margen PBH normalizado |
+	|---|---|---|---|
+	$(join(obs_filas, "\n"))
+
+	$(count(f -> f.observable, obs_tabla)) de $(length(obs_tabla)) subconjuntos
+	son observables. Nótese cuánto peor es el margen del juego mínimo frente al
+	completo, aunque ambos den rango pleno.
+	""")
+end
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000018
+md"""
+### Simulación con observador
+
+La planta arranca inclinada y el estimador arranca en **cero**: el máximo
+desconocimiento posible. El control es ``u = -K\hat{\mathbf{x}}``, no
+``-K\mathbf{x}``.
+"""
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000019
+md"**Ángulo inicial para la prueba del observador [rad]:**"
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000020
+@bind obs_th0 PlutoUI.Slider(0.02:0.02:0.6, default=0.15, show_value=true)
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000021
+begin
+	obs_z0 = zeros(8)
+	obs_z0[3] = obs_th0
+	obs_p = (params=params, eom! = nonlinear_eom!, A=ss.A, B=ss.B, C=ss.C,
+		K=lqr.K, L=obs_res.L, saturate=met_umax)
+	obs_sol = solve(ODEProblem(observer_eom!, obs_z0, (0.0, 10.0), obs_p),
+		Tsit5(), saveat=0.01)
+
+	obs_err = [norm(u[1:4] .- u[5:8]) for u in obs_sol.u]
+	obs_u = [clamp(-dot(lqr.K[1, :], u[5:8]), -met_umax, met_umax) for u in obs_sol.u]
+	obs_i1 = findfirst(e -> e < 0.01 * max(obs_err[1], eps()), obs_err)
+
+	Markdown.parse("""
+	| Cantidad | Valor |
+	|---|---|
+	| ``\\lVert e(0)\\rVert`` | $(round(obs_err[1], digits=4)) |
+	| ``\\lVert e(T)\\rVert`` | $(@sprintf("%.3e", obs_err[end])) |
+	| Cae al 1 % del inicial | $(obs_i1 === nothing ? "no alcanza" : "t = $(round(obs_sol.t[obs_i1], digits=2)) s") |
+	| Fuerza pico con observador | $(round(maximum(abs.(obs_u)), digits=2)) N |
+	| Converge | $(abs(obs_sol.u[end][3]) < 0.02 ? "**SI**" : "**NO**") |
+	""")
+end
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000022
+let
+	fig = Figure(size=(900, 620))
+
+	ax1 = Axis(fig[1, 1], title="theta -- variable MEDIDA",
+		xlabel="t [s]", ylabel="theta [rad]")
+	lines!(ax1, obs_sol.t, [u[3] for u in obs_sol.u], color=:black,
+		linewidth=2.5, label="real")
+	lines!(ax1, obs_sol.t, [u[7] for u in obs_sol.u], color=RGBf(0.85,0.50,0.11),
+		linewidth=2, linestyle=:dash, label="estimado")
+	axislegend(ax1, position=:rt)
+
+	ax2 = Axis(fig[1, 2], title="omega -- variable NO medida, reconstruida",
+		xlabel="t [s]", ylabel="omega [rad/s]")
+	lines!(ax2, obs_sol.t, [u[4] for u in obs_sol.u], color=:black,
+		linewidth=2.5, label="real")
+	lines!(ax2, obs_sol.t, [u[8] for u in obs_sol.u], color=RGBf(0.85,0.50,0.11),
+		linewidth=2, linestyle=:dash, label="estimado")
+	axislegend(ax2, position=:rb)
+
+	ax3 = Axis(fig[2, 1], title="Error de estimación ||x - xhat||",
+		xlabel="t [s]", ylabel="||e||", yscale=log10)
+	lines!(ax3, obs_sol.t, max.(obs_err, 1e-14), color=RGBf(0.55,0.24,0.62),
+		linewidth=2)
+
+	ax4 = Axis(fig[2, 2], title="Fuerza de control u = -K xhat",
+		xlabel="t [s]", ylabel="F [N]")
+	lines!(ax4, obs_sol.t, obs_u, color=RGBf(0.18,0.49,0.20), linewidth=2)
+	hlines!(ax4, [0.0], color=:gray60, linewidth=0.5, linestyle=:dot)
+
+	Label(fig[0, :], "Observador: el estimador arranca en cero",
+		fontsize=15, font=:bold)
+	fig
+end
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000023
+md"""
+## 14. Barrido de parámetros
+
+El mismo sistema visto como instancia del modelo genérico de ``N`` eslabones
+(``N = 1`` con barra uniforme). Elige qué parámetro barrer y observa cómo se
+mueven el margen PBH, el esfuerzo de control y el modo dominante.
+"""
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000024
+@bind sw_sel PlutoUI.Select([
+	"M" => "Masa del carro M",
+	"m" => "Masa de la barra m",
+	"l" => "Longitud de la barra Lbar",
+	"b" => "Fricción del carro b",
+], default="M")
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000025
+begin
+	sw_base = uniform_rods(M_val, [m_val], [Lbar]; g=g_val, b=b_val)
+	sw_map = Dict(
+		"M" => (:M, collect(10 .^ range(log10(0.05), log10(20.0), length=40))),
+		"m" => ((:m, 1), collect(10 .^ range(log10(0.02), log10(3.0), length=40))),
+		"l" => ((:l, 1), collect(range(0.1, 3.0, length=40))),
+		"b" => (:b, collect(range(0.0, 2.0, length=40))),
+	)
+	sw_spec, sw_vals = sw_map[sw_sel]
+	sw_res = sweep_1d(linearize_system_nlink, sw_base, sw_spec, sw_vals)
+	sw_pbh = [r.pbh_normalized for r in sw_res]
+	sw_normk = [r.norm_K for r in sw_res]
+	sw_lam = [r.lambda_max for r in sw_res]
+	sw_best = argmax(sw_pbh)
+
+	Markdown.parse("""
+	Barrido de **$(sw_sel)** en $(length(sw_vals)) puntos.
+	Mejor margen PBH en $(sw_sel) = **$(round(sw_vals[sw_best], digits=4))**
+	($(@sprintf("%.4e", sw_pbh[sw_best]))).
+	$(1 < sw_best < length(sw_vals) ? "El óptimo es **interior**." : "El óptimo cae en un extremo del dominio.")
+	""")
+end
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000026
+let
+	logx = sw_sel in ("M", "m")
+	fig = Figure(size=(900, 320))
+
+	ax1 = Axis(fig[1, 1], title="Margen PBH normalizado", xlabel=sw_sel,
+		ylabel="PBH norm", yscale=log10, xscale=logx ? log10 : identity)
+	lines!(ax1, sw_vals, sw_pbh, color=RGBf(0.17,0.45,0.71), linewidth=2.5)
+	scatter!(ax1, [sw_vals[sw_best]], [sw_pbh[sw_best]],
+		color=RGBf(0.84,0.15,0.16), markersize=14, marker=:star5)
+
+	ax2 = Axis(fig[1, 2], title="Esfuerzo de control ||K||", xlabel=sw_sel,
+		ylabel="norm(K)", yscale=log10, xscale=logx ? log10 : identity)
+	lines!(ax2, sw_vals, sw_normk, color=RGBf(0.85,0.50,0.11), linewidth=2.5)
+
+	ax3 = Axis(fig[1, 3], title="Modo dominante", xlabel=sw_sel,
+		ylabel="lambda_max [1/s]", xscale=logx ? log10 : identity)
+	lines!(ax3, sw_vals, sw_lam, color=RGBf(0.84,0.15,0.16), linewidth=2.5)
+
+	fig
+end
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000027
+md"""
+### La frontera práctica
+
+Bisección sobre el modelo **no lineal** con saturación. Criterio de éxito:
+``|\theta(T)| < 0.02`` rad, el carro dentro del riel y sin pasar de ``\pi/2``.
+Aquí la comparación honesta de la cota elipsoidal es contra la columna **sin
+riel**: ``c^\star`` no dice nada sobre la carrera del carro.
+"""
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000028
+md"**Longitud del riel [m]:**"
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000029
+@bind sw_rail PlutoUI.Slider(0.5:0.1:5.0, default=1.5, show_value=true)
+
+# ╔═╡ e5f6a7b8-4444-4000-c000-000000000030
+begin
+	sw_th_riel = max_recoverable_angle(sw_base, lqr.K; umax=met_umax, x_rail=sw_rail)
+	sw_th_libre = max_recoverable_angle(sw_base, lqr.K; umax=met_umax, x_rail=1e6)
+	sw_manda = abs(sw_th_libre - sw_th_riel) > 0.01
+
+	Markdown.parse("""
+	| Frontera | Valor |
+	|---|---|
+	| Cota elipsoidal (garantía lineal) | $(round(met_theta, digits=4)) rad |
+	| Frontera real con riel de $(sw_rail) m | **$(round(sw_th_riel, digits=4)) rad** |
+	| Frontera real sin restricción de riel | $(round(sw_th_libre, digits=4)) rad |
+	| Restricción activa | **$(sw_manda ? "EL RIEL" : "LA SATURACIÓN")** |
+
+	En el péndulo simple con riel de 1.5 m y ``u_{\\max} = 50`` N la restricción
+	activa suele ser el **riel**, no el motor: el carro se queda sin pista antes
+	de que el actuador se sature. Es un resultado que solo aparece al separar
+	cada límite.
+	""")
+end
+
 # ╔═╡ 487aaede-2a86-11f1-acf5-215541c49e3a
 
 
@@ -1311,4 +1726,34 @@ end
 # ╟─d4e5f6a7-3333-4000-b000-000000000014
 # ╠═d4e5f6a7-3333-4000-b000-000000000015
 # ╠═d4e5f6a7-3333-4000-b000-000000000016
+# ╟─e5f6a7b8-4444-4000-c000-000000000001
+# ╠═e5f6a7b8-4444-4000-c000-000000000002
+# ╟─e5f6a7b8-4444-4000-c000-000000000003
+# ╟─e5f6a7b8-4444-4000-c000-000000000004
+# ╠═e5f6a7b8-4444-4000-c000-000000000005
+# ╠═e5f6a7b8-4444-4000-c000-000000000006
+# ╟─e5f6a7b8-4444-4000-c000-000000000007
+# ╠═e5f6a7b8-4444-4000-c000-000000000008
+# ╟─e5f6a7b8-4444-4000-c000-000000000009
+# ╠═e5f6a7b8-4444-4000-c000-000000000010
+# ╠═e5f6a7b8-4444-4000-c000-000000000011
+# ╟─e5f6a7b8-4444-4000-c000-000000000012
+# ╟─e5f6a7b8-4444-4000-c000-000000000013
+# ╠═e5f6a7b8-4444-4000-c000-000000000014
+# ╠═e5f6a7b8-4444-4000-c000-000000000015
+# ╟─e5f6a7b8-4444-4000-c000-000000000016
+# ╠═e5f6a7b8-4444-4000-c000-000000000017
+# ╟─e5f6a7b8-4444-4000-c000-000000000018
+# ╟─e5f6a7b8-4444-4000-c000-000000000019
+# ╠═e5f6a7b8-4444-4000-c000-000000000020
+# ╠═e5f6a7b8-4444-4000-c000-000000000021
+# ╠═e5f6a7b8-4444-4000-c000-000000000022
+# ╟─e5f6a7b8-4444-4000-c000-000000000023
+# ╠═e5f6a7b8-4444-4000-c000-000000000024
+# ╠═e5f6a7b8-4444-4000-c000-000000000025
+# ╠═e5f6a7b8-4444-4000-c000-000000000026
+# ╟─e5f6a7b8-4444-4000-c000-000000000027
+# ╟─e5f6a7b8-4444-4000-c000-000000000028
+# ╠═e5f6a7b8-4444-4000-c000-000000000029
+# ╠═e5f6a7b8-4444-4000-c000-000000000030
 # ╟─487aaede-2a86-11f1-acf5-215541c49e3a

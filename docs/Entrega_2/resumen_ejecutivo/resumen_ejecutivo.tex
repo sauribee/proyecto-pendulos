@@ -75,7 +75,7 @@
 \addto\captionsspanish{\renewcommand{\tablename}{Tabla}}
 
 % Figuras: las propias del informe técnico de esta entrega y los mapas del atlas.
-\graphicspath{{../../resumen_tecnico/entrega_2/figs/}{../../segunda_entrega/figs/}}
+\graphicspath{{../resumen_tecnico/figs/}{../atlas/figs/}}
 
 % ============================================================
 \begin{document}
@@ -139,8 +139,9 @@ máxima medida es $5.3\times10^{-15}$ para $N=1$ y \emph{exactamente cero} para
 $N=2$.
 
 \textbf{Una métrica que reemplaza al rango.} Se introdujo el \emph{margen de
-Popov--Belevitch--Hautus}, que sustituye el rango por el menor valor singular de
-$[A-\lambda I\mid B]$. Por el teorema de Eckart--Young esa cantidad es
+Popov--Belevitch--Hautus}~\cite{chen1999}, que sustituye el rango por el menor
+valor singular de
+$[A-\lambda I\mid B]$. Por el teorema de Eckart--Young~\cite{eckart1936} esa cantidad es
 exactamente la distancia en norma 2 a perder la controlabilidad: mide
 \emph{cuánto habría que perturbar el sistema} para volverlo incontrolable.
 
@@ -150,10 +151,11 @@ imposibilidad \emph{estructural} (propiedad del sistema) de la \emph{práctica}
 (propiedad de la implementación).
 
 \textbf{Un observador de estado.} Se cerró el hueco 1 con un observador de
-Luenberger diseñado por \emph{dualidad de Kalman}, que reutiliza la misma
-ecuación de Riccati del controlador sin escribir ningún algoritmo nuevo.
+Luenberger~\cite{ogata2010} diseñado por \emph{dualidad de Kalman}, que
+reutiliza la misma ecuación de Riccati del controlador sin escribir ningún
+algoritmo nuevo.
 
-\textbf{597 pruebas de regresión}, que contrastan los jacobianos analíticos
+\textbf{618 pruebas de regresión}, que contrastan los jacobianos analíticos
 contra diferenciación automática y reproducen cada cifra publicada.
 
 \noindent\emph{Detalle: informe técnico~\cite{tecnico2}, Secciones~2 a~7.}
@@ -186,9 +188,10 @@ completa en 1.85~s con un pico de fuerza de 7.29~N.
 
 \textbf{El álgebra escala, el condicionamiento no.} Éste es el resultado
 central. El criterio de rango sigue dando la respuesta correcta para las tres
-configuraciones, pero el condicionamiento de la matriz de Kalman crece unos
+configuraciones, pero el condicionamiento~\cite{golub2013} de la matriz de
+Kalman crece unos
 cuatro órdenes de magnitud por eslabón: con cinco eslabones alcanza
-$3\times10^{16}$, es decir $1/\varepsilon_{\text{máq}}$, y el rango numérico pasa
+$3.3\times10^{16}$, es decir $1/\varepsilon_{\text{máq}}$, y el rango numérico pasa
 a ser \emph{ruido} aunque el sistema siga siendo controlable en aritmética
 exacta. El margen PBH, en cambio, decae suavemente ---dos órdenes y medio en el
 mismo rango--- y sigue siendo utilizable.
@@ -211,7 +214,8 @@ configuración sin decir antes qué se optimiza.
 
 \textbf{La frontera de operabilidad, y dónde falla la garantía.} La cota
 elipsoidal $c^\star=u_{\max}^2/(KP^{-1}K^\top)$ ---una garantía dura obtenida
-con Cauchy--Schwarz--- queda por dentro de la frontera real mientras la
+con Cauchy--Schwarz sobre la forma cuadrática de Lyapunov~\cite{olver2018}---
+queda por dentro de la frontera real mientras la
 saturación sea la restricción activa, pero la cruza a partir de $u_{\max}=85$~N.
 La razón es que $c^\star$ solo certifica no saturación más convergencia
 \emph{lineal}, y más allá de ese punto lo que limita es la no linealidad.
@@ -277,21 +281,32 @@ subactuado de creciente complejidad. Pero al escalar aparece un límite que no e
 teórico sino numérico: los criterios binarios de rango dejan de ser confiables
 mucho antes de que la teoría deje de aplicar. La respuesta no es cambiar de
 teoría sino de herramienta, y la herramienta adecuada ---el menor valor singular,
-vía Eckart--Young--- vive en el mismo cuerpo de álgebra lineal. Esa es la
-lección de esta entrega.
+vía Eckart--Young--- vive en el mismo cuerpo de álgebra lineal
+aplicada~\cite{olver2018,boyd2018}. Esa es la lección de esta entrega.
 
 % ============================================================
+% Ordenadas alfabéticamente por apellido del primer autor; entre obras del mismo
+% autor, por título.
 \begin{thebibliography}{9}
 \small
+\bibitem{tecnico1}
+M.~Bedoya, C.~Patiño y S.~Uribe, \emph{Análisis del Péndulo Invertido sobre un
+Carro mediante Álgebra Lineal Aplicada --- Informe Técnico, primera entrega}.
+Universidad Nacional de Colombia, Sede Medellín, 2026.
+
 \bibitem{tecnico2}
 M.~Bedoya, C.~Patiño y S.~Uribe, \emph{Cuándo el Álgebra Lineal Deja de Bastar y
 qué la Reemplaza --- Informe Técnico, segunda entrega}. Universidad Nacional de
 Colombia, Sede Medellín, 2026.
 
-\bibitem{tecnico1}
-M.~Bedoya, C.~Patiño y S.~Uribe, \emph{Análisis del Péndulo Invertido sobre un
-Carro mediante Álgebra Lineal Aplicada --- Informe Técnico, primera entrega}.
-Universidad Nacional de Colombia, Sede Medellín, 2026.
+\bibitem{boyd2018}
+S.~Boyd y L.~Vandenberghe, \emph{Introduction to Applied Linear Algebra:
+Vectors, Matrices, and Least Squares}. Cambridge: Cambridge University Press,
+2018.
+
+\bibitem{chen1999}
+C.-T.~Chen, \emph{Linear System Theory and Design}, 3.\textsuperscript{a} ed.
+New York: Oxford University Press, 1999.
 
 \bibitem{eckart1936}
 C.~Eckart y G.~Young, ``The approximation of one matrix by another of lower
@@ -301,13 +316,13 @@ rank'', \emph{Psychometrika}, vol.~1, n.\textsuperscript{o}~3, pp.~211--218, 193
 G.~H.~Golub y C.~F.~Van Loan, \emph{Matrix Computations},
 4.\textsuperscript{a} ed. Baltimore: Johns Hopkins University Press, 2013.
 
-\bibitem{chen1999}
-C.-T.~Chen, \emph{Linear System Theory and Design}, 3.\textsuperscript{a} ed.
-New York: Oxford University Press, 1999.
-
 \bibitem{ogata2010}
 K.~Ogata, \emph{Modern Control Engineering}, 5.\textsuperscript{a} ed.
 Upper Saddle River, NJ: Prentice Hall, 2010.
+
+\bibitem{olver2018}
+P.~J.~Olver y C.~Shakiban, \emph{Applied Linear Algebra},
+2.\textsuperscript{a} ed. Cham: Springer, 2018.
 
 \end{thebibliography}
 

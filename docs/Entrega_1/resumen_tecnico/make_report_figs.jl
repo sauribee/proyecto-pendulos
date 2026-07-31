@@ -1,17 +1,17 @@
 # =============================================================================
 # make_report_figs.jl -- Genera las figuras de respuesta temporal del informe
 # =============================================================================
-# Produce, en resumen_tecnico/entrega_1/figs/, las graficas que se incluyen en
+# Produce, en Entrega_1/resumen_tecnico/figs/, las graficas que se incluyen en
 # el .tex, y reporta metricas (tiempo de asentamiento, esfuerzo de control pico)
 # que se citan en la discusion de resultados. Usa CairoMakie (salida estatica).
 #
 # Ejecutar desde la carpeta del proyecto:
-#   julia --project=. docs/resumen_tecnico/entrega_1/make_report_figs.jl
+#   julia --project=. docs/Entrega_1/resumen_tecnico/make_report_figs.jl
 # =============================================================================
 
 using Pkg
-# Este script vive en docs/resumen_tecnico/entrega_1/; la raiz del proyecto esta
-# tres niveles arriba (entrega_1 -> resumen_tecnico -> docs -> raiz).
+# Este script vive en docs/Entrega_1/resumen_tecnico/; la raiz del proyecto esta
+# tres niveles arriba (resumen_tecnico -> Entrega_1 -> docs -> raiz).
 const PROJ_ROOT = normpath(joinpath(@__DIR__, "..", "..", ".."))
 Pkg.activate(PROJ_ROOT)
 

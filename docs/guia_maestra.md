@@ -1,12 +1,18 @@
 # Guía maestra del proyecto: péndulo invertido sobre un carro
 
-Documento maestro de referencia. Reúne, relaciona y explica en profundidad
-**toda** la implementación del repositorio: la teoría de álgebra lineal, el
-modelado físico, el código en Julia, los resultados numéricos y los cuatro
-artefactos de documentación (informe técnico, resumen ejecutivo, presentación
-Beamer y notebooks). Su objetivo es doble: servir de mapa para entender el
-proyecto de principio a fin y ser la herramienta de preparación de la
-presentación oral.
+Documento maestro de referencia. Reúne, relaciona y explica en profundidad la
+implementación del repositorio: la teoría de álgebra lineal, el modelado físico,
+el código en Julia, los resultados numéricos y los artefactos de documentación.
+Su objetivo es doble: servir de mapa para entender el proyecto de principio a fin
+y ser la herramienta de preparación de la presentación oral.
+
+> **Alcance.** Las secciones 1 a 14 desarrollan **la primera entrega**
+> (Configuraciones I y II) y son las que sostienen la presentación oral, que no
+> cubre la segunda entrega. La **sección 15** resume qué añadió la segunda
+> entrega —Configuración III, familia genérica en $N$, margen PBH, atlas de
+> operabilidad y observador— y remite al informe técnico correspondiente, que es
+> la fuente de verdad de esos resultados. Cuando una sección de la 1 a la 14
+> dice "las dos configuraciones", léase "las dos de la primera entrega".
 
 - **Curso:** Álgebra Lineal Aplicada. Universidad Nacional de Colombia, Sede Medellín, Facultad de Ciencias.
 - **Autores:** Mateo Bedoya Rojas, Camilo Alejandro Patiño Osorio, Santiago Uribe Echavarría.
@@ -30,6 +36,7 @@ presentación oral.
 12. [Defensa: preguntas frecuentes y puntos delicados](#12-defensa-preguntas-frecuentes-y-puntos-delicados)
 13. [Glosario de símbolos y checklist final](#13-glosario-de-símbolos-y-checklist-final)
 14. [Guía de ejecución paso a paso](#14-guía-de-ejecución-paso-a-paso)
+15. [La segunda entrega: qué añade](#15-la-segunda-entrega-qué-añade)
 
 ---
 
@@ -111,11 +118,22 @@ escala** (linealizar, estudiar el espectro, verificar controlabilidad, diseñar 
 realimentación) sin cambios conceptuales cuando crecen los grados de libertad:
 solo cambian el tamaño de las matrices y el esfuerzo de control.
 
+> **[E2]** La segunda entrega añade una **Configuración III** (péndulo triple,
+> tres eslabones como barras uniformes, $\mathbf{x}\in\mathbb{R}^8$, 3 modos
+> inestables) y, más importante, muestra que las tres son casos particulares de
+> una misma familia de $N$ eslabones. Con tres puntos, la afirmación "el método
+> escala" deja de ser anecdótica y se vuelve una curva —que además revela su
+> propio límite: el álgebra escala, pero el condicionamiento no. Ver la
+> sección 15.
+
 ---
 
 ## 3. Arquitectura del repositorio y flujo de datos
 
 ### 3.1 Árbol de archivos comentado
+
+Las entradas marcadas con **[E2]** son de la segunda entrega (sección 15); el
+resto es la base de la primera.
 
 ```
 proyecto-pendulos/
@@ -124,23 +142,44 @@ proyecto-pendulos/
 ├── setup.jl                  Instala e instancia las dependencias
 ├── main_simple.jl            Pipeline completo del pendulo SIMPLE (Config. I)
 ├── main_double.jl            Pipeline completo del pendulo DOBLE (Config. II)
+├── main_triple.jl            [E2] Pipeline completo del pendulo TRIPLE (Config. III)
 ├── README.md                 Instrucciones de uso
 ├── src/
 │   ├── model_simple.jl       Modulo Model:        parametros, EOM no lineales, lazo cerrado (simple)
 │   ├── model_double.jl       Modulo ModelDouble:  parametros, EOM no lineales, lazo cerrado (doble)
+│   ├── model_nlink.jl        [E2] Modulo ModelNLink:  modelo GENERICO de N eslabones
+│   ├── model_triple.jl       [E2] Modulo ModelTriple: capa delgada sobre ModelNLink (N=3)
 │   ├── linearization.jl      Modulo Linearization: A,B,C,D, espectro, Kalman (generico en n)
 │   ├── controller.jl         Modulo Controller:   LQR (Riccati/Hamiltoniano) y Ackermann (genericos)
+│   ├── metrics.jl            [E2] Modulo Metrics:   margen PBH, condicionamiento, elipsoide, ZOH
+│   ├── sweep.jl              [E2] Modulo Sweep:     barridos y fronteras de operabilidad
+│   ├── observer.jl           [E2] Modulo Observer:  Luenberger por dualidad, separacion, sensores
 │   ├── animation_simple.jl   Modulo Animation:       animacion GLMakie del simple
-│   └── animation_double.jl   Modulo AnimationDouble: animacion GLMakie del doble
+│   ├── animation_double.jl   Modulo AnimationDouble: animacion GLMakie del doble
+│   └── animation_triple.jl   [E2] Modulo AnimationTriple: animacion GLMakie de N eslabones
+├── test/
+│   └── runtests.jl           [E2] Pruebas de regresion (618, en ocho conjuntos)
 ├── notebooks/
 │   ├── 01_exploracion_simple.jl   Explorador interactivo Pluto (R^4)
-│   └── 02_exploracion_doble.jl    Explorador interactivo Pluto (R^6)
+│   ├── 02_exploracion_doble.jl    Explorador interactivo Pluto (R^6)
+│   └── 03_exploracion_triple.jl   [E2] Explorador interactivo Pluto (R^8)
 └── docs/
-    ├── guia_maestra.md            Este documento
-    ├── resumen_ejecutivo/         Resumen ejecutivo (LaTeX + PDF), max 5 paginas
-    ├── resumen_tecnico/           Informe tecnico (LaTeX + PDF) + make_report_figs.jl + figs/
-    └── presentacion/              Diapositivas Beamer 16:9 + make_slide_figs.jl + figs/
+    ├── guia_maestra.md            Este documento (cubre las dos entregas)
+    ├── Entrega_1/                 PRIMERA ENTREGA (Configuraciones I y II)
+    │   ├── resumen_tecnico/       Informe tecnico + make_report_figs.jl + figs/
+    │   ├── resumen_ejecutivo/     Resumen ejecutivo (LaTeX + PDF), max 5 paginas
+    │   └── presentacion/          Diapositivas Beamer 16:9 + make_slide_figs.jl + figs/
+    └── Entrega_2/                 [E2] SEGUNDA ENTREGA (Configuracion III y analisis)
+        ├── plan_de_trabajo.md     Plan y metas de verificacion de esta entrega
+        ├── resumen_tecnico/       Informe tecnico + make_report_figs.jl + figs/
+        ├── resumen_ejecutivo/     Resumen ejecutivo (LaTeX + PDF)
+        └── atlas/                 Atlas de operabilidad: make_atlas_figs.jl + figs/ + data/
 ```
+
+Cada entrega es autocontenida: sus documentos, scripts de figuras y figuras
+viven bajo la misma carpeta, y se referencian entre si con rutas cortas
+(`../resumen_tecnico/figs/`, `../atlas/figs/`). La segunda entrega no lleva
+presentacion, por eso `presentacion/` cuelga de `Entrega_1/`.
 
 ### 3.2 El principio de diseño: física separada de álgebra
 
@@ -162,6 +201,12 @@ En consecuencia, `design_lqr`, `solve_care`, `design_pole_placement`,
 **una sola vez** y el doble los reutiliza sin cambios. Este es un argumento fuerte
 para la presentación: el álgebra lineal es indiferente a que el estado viva en
 $\mathbb{R}^4$ o en $\mathbb{R}^6$.
+
+La segunda entrega puso a prueba ese diseño de la mejor manera posible: los
+módulos nuevos (`Metrics`, `Sweep`, `Observer`) se escribieron también genéricos
+en $n$, y el sistema de $\mathbb{R}^8$ de la Configuración III **no obligó a
+tocar una sola línea** de `Controller` ni de las funciones de análisis de
+`Linearization`. Ver la sección 15.
 
 ### 3.3 Flujo de datos de cada pipeline
 
@@ -188,10 +233,11 @@ LQR).
 | `LinearAlgebra` | `eigen`, `rank`, `inv`, `cholesky`, productos matriciales (el núcleo del proyecto) |
 | `CairoMakie` | Gráficas estáticas para informes y notebooks (salida en CPU) |
 | `GLMakie` | Animaciones interactivas del carro-péndulo (los `main_*.jl`) |
-| `ControlSystems`, `MatrixEquations` | Apoyo y verificación (Riccati, Lyapunov) |
-| `Symbolics` | Derivaciones simbólicas de apoyo |
+| `MatrixEquations` | Verificación: `arec` contra la implementación propia de la CARE (en `test/runtests.jl`) |
+| `ForwardDiff` | Diferenciación automática: contrasta los jacobianos analíticos contra la derivada de las EOM no lineales |
 | `Pluto`, `PlutoUI` | Notebooks interactivos con sliders |
-| `Printf` | Salida formateada por consola |
+| `Printf`, `Test` | Salida formateada por consola y pruebas de regresión |
+| `ControlSystems`, `Symbolics` | Declarados como apoyo previsto (verificación de control y derivaciones simbólicas); **hoy no se usan en ningún archivo**. `Symbolics` correspondía al módulo M8 del plan, que quedó sin implementar |
 
 Nota clave: las rutinas de álgebra lineal centrales (linealización, Riccati,
 Ackermann) **se programaron a mano desde las definiciones**, no se delegaron a
@@ -1006,6 +1052,25 @@ puente entre las secciones 4-7 y los archivos de `src/`.
 | Animación simple | `animate_pendulum` | `animation_simple.jl` | GLMakie, observables reactivos |
 | Animación doble | `animate_pendulum_double` | `animation_double.jl` | Dos eslabones; misma interfaz `save_animation` |
 
+Los módulos de la segunda entrega, con el mismo formato **[E2]** (desarrollo en
+la sección 15):
+
+| Concepto | Función Julia | Archivo | Notas |
+|---|---|---|---|
+| Modelo genérico de $N$ eslabones | `SystemParamsNLink`, `uniform_rods`, `point_masses`, `nonlinear_eom_nlink!` | `model_nlink.jl` | Contiene a I, II y III; $\mathbf{M}(q)$ vía Cholesky |
+| Agrupaciones $\beta_j, J_j, \Gamma_{jk}$ | `link_couplings`, `mass_matrix` | `model_nlink.jl` | Lo que organiza todo el modelo |
+| Configuración III | `default_params_triple`, `nonlinear_eom_triple!` | `model_triple.jl` | Capa delgada sobre `ModelNLink` |
+| Linealización genérica en $N$ | `linearize_system_nlink`, `linearize_system_triple` | `linearization.jl` | Jacobiano analítico; $A_{cc}=\mathbf{M}_0^{-1}\mathbf{G}_0$ |
+| Margen PBH | `pbh_controllability_margin[_normalized]`, `pbh_observability_margin` | `metrics.jl` | $\min_\lambda \sigma_{\min}[A-\lambda I \mid B]$, Eckart-Young |
+| Condicionamiento de Krylov | `controllability_condition`, `observability_condition` | `metrics.jl` | $\sigma_{\max}/\sigma_{\min}$ de $\mathcal{C}$ y $\mathcal{O}$ |
+| Elipsoide de no saturación | `nonsaturation_level`, `max_axis_angle` | `metrics.jl` | $c^\star = u_{\max}^2/(KP^{-1}K^\top)$, Cauchy-Schwarz |
+| Discretización ZOH y Schur | `discretize_zoh`, `is_schur` | `metrics.jl` | Truco de Van Loan sobre $[A\ B; 0\ 0]$ |
+| Barridos de parámetros | `viability`, `sweep_1d`, `sweep_2d`, `set_param` | `sweep.jl` | Recalcula la geometría derivada al barrer longitudes |
+| Fronteras por bisección | `max_recoverable_angle`, `min_actuator_force`, `max_sampling_period` | `sweep.jl` | Sobre el modelo **no lineal** con saturación |
+| Observador por dualidad | `design_observer`, `design_observer_poles` | `observer.jl` | $L = \operatorname{lqr}(A^\top, C^\top, Q_o, R_o)^\top$ |
+| Principio de separación | `augmented_closed_loop`, `check_separation` | `observer.jl` | Triangular por bloques ⟹ unión de espectros |
+| Juego mínimo de sensores | `sensor_subset_analysis`, `print_sensor_table` | `observer.jl` | Los $2^p-1$ subconjuntos, con su margen PBH |
+
 ### 8.2 Los tres extractos que hay que saber explicar
 
 Estos tres fragmentos condensan la relación teoría-código y aparecen en la
@@ -1074,8 +1139,8 @@ positivas) y `\` resuelve dos sistemas triangulares, sin calcular $\mathbf{M}^{-
 - **Solver numérico:** `Tsit5()` (Tsitouras 5/4), un Runge-Kutta explícito de
   orden 5. Las EOM se integran con `saveat` fino (0.005-0.01 s).
 - **Saturación del actuador:** el lazo cerrado admite `saturate` (clamp de la
-  fuerza): $\pm50$ N en el simple, $\pm100$ N en el doble. Las fuerzas reales pico
-  quedan muy por debajo (ver 9.3).
+  fuerza): $\pm50$ N en el simple, $\pm100$ N en el doble y $\pm150$ N en el
+  triple. Las fuerzas reales pico quedan muy por debajo (ver 9.4).
 - **Genericidad:** `print_controller_summary` y las rutinas de análisis generan
   etiquetas $K_1, \dots, K_n$ automáticamente, funcionando para cualquier $n$.
 
@@ -1101,6 +1166,7 @@ transcriben a mano.**
 |---|---|---|
 | Simple ($n = 4$) | $+4.21,\ 0,\ -0.077,\ -4.23$ | Inestable (1 modo) |
 | Doble ($n = 6$) | $+8.57,\ +4.09,\ 0,\ 0,\ -4.09,\ -8.57$ | Inestable (2 modos) |
+| Triple ($n = 8$) **[E2]** | $+18.06,\ +9.77,\ +4.38,\ 0,\ -0.06,\ -4.40,\ -9.78,\ -18.06$ | Inestable (3 modos) |
 
 - El eigenvalor **positivo** ($+4.21$ en el simple, $+8.57$ y $+4.09$ en el doble)
   es la firma de la inestabilidad predicha por el signo del término gravitatorio.
@@ -1111,6 +1177,11 @@ transcriben a mano.**
   $\operatorname{rank}(\mathcal{O}) = n$ ($4/4$ para el simple, $6/6$ para el
   doble). Los dos sistemas son **completamente controlables y observables**, así
   que su espectro puede reubicarse por realimentación.
+- El patrón "$N$ eslabones, $N$ modos inestables, más un cero doble" no es
+  casualidad: la segunda entrega lo demuestra como proposición para todo $N$
+  (sección 15). El $-0.077$ del simple y el $-0.06$ del triple son ese cero doble
+  desdoblado por la fricción del carro; el doble, que no tiene fricción, conserva
+  el cero exactamente doble.
 
 ### 9.3 Lazo cerrado: ganancias y polos
 
@@ -1119,6 +1190,7 @@ transcriben a mano.**
 | Simple — LQR, $Q = \operatorname{diag}(1,0,10,0)$, $R = 0.1$ | $K = (-3.16, -4.69, -45.39, -10.93)$;  $\sigma = \{-4.48\pm1.56i,\ -1.01\pm0.95i\}$ |
 | Simple — Ackermann, polos $\{-1,-2,-3,-4\}$ | $K = (-1.75, -3.75, -39.01, -9.60)$;  $\sigma = \{-1, -2, -3, -4\}$ |
 | Doble — LQR, $Q = \operatorname{diag}(1,0,10,0,10,0)$, $R = 0.1$ | $K = (3.16, 5.82, -191.55, -10.99, 228.32, 36.14)$;  $\sigma = \{-8.69\pm1.00i,\ -4.31\pm1.74i,\ -0.89\pm0.82i\}$ |
+| Triple — LQR, $Q = \operatorname{diag}(1,0,10,0,10,0,10,0)$, $R = 0.1$ **[E2]** | $K = (-3.16, -6.17, -317.43, -4.37, 911.95, 37.73, -667.37, -61.42)$;  $\sigma = \{-18.14\pm0.97i,\ -10.02\pm1.73i,\ -4.57\pm2.32i,\ -0.84\pm0.79i\}$ |
 
 Interpretación:
 
@@ -1143,6 +1215,7 @@ El tiempo de asentamiento $t_s$ usa el umbral absoluto $|\theta| < 0.02$ rad
 | Simple — LQR | 1.45 | 6.8 | $\approx 0.33$ m |
 | Simple — Ackermann | 1.54 | 5.9 | — |
 | Doble — LQR | 1.77 | 4.2 | $\approx 0.43$ m |
+| Triple — LQR **[E2]** | 1.84–1.87 | 7.3 | $\approx 0.55$ m |
 
 - El LQR del simple ubica polos complejos y asienta algo más rápido, con respuesta
   levemente sub-amortiguada. Ackermann, con polos reales, da respuesta sin
@@ -1182,18 +1255,20 @@ forma con que las trayectorias vuelven al origen.
 
 ## 10. Los artefactos de documentación y cómo se relacionan
 
-El proyecto tiene cuatro artefactos, con niveles de detalle decrecientes-crecientes
-y audiencias distintas. Entender su relación es clave para saber de dónde sacar
-cada cosa al preparar la presentación.
+Cada entrega tiene su propio informe técnico y su resumen ejecutivo, con niveles
+de detalle y audiencias distintas. Entender su relación es clave para saber de
+dónde sacar cada cosa al preparar la presentación.
 
 ### 10.1 Mapa de artefactos
 
 | Artefacto | Ubicación | Audiencia | Rol |
 |---|---|---|---|
-| **Informe técnico** | `docs/resumen_tecnico/` | Evaluador que quiere el detalle completo | Fuente de verdad: todas las definiciones, teoremas, demostraciones y derivaciones |
-| **Resumen ejecutivo** | `docs/resumen_ejecutivo/` | Lectura rápida (máx. 5 páginas) | Mapa del proyecto; remite al técnico en cada sección |
-| **Presentación** | `docs/presentacion/` | Exposición oral (20 min) | Selección visual de lo esencial |
-| **Notebooks Pluto** | `notebooks/` | Exploración interactiva | Demostración en vivo; recalculan todo al mover sliders |
+| **Informe técnico (1.ª entrega)** | `docs/Entrega_1/resumen_tecnico/` | Evaluador que quiere el detalle completo | Fuente de verdad de las Configuraciones I y II: definiciones, teoremas, demostraciones y derivaciones |
+| **Informe técnico (2.ª entrega)** | `docs/Entrega_2/resumen_tecnico/` | Ídem | Fuente de verdad de la Configuración III, el margen PBH, el atlas y el observador |
+| **Resumen ejecutivo (×2)** | `docs/Entrega_1/resumen_ejecutivo/` y `docs/Entrega_2/resumen_ejecutivo/` | Lectura rápida (máx. 5 páginas) | Mapa de cada entrega; remite al técnico en cada sección |
+| **Presentación** | `docs/Entrega_1/presentacion/` | Exposición oral (20 min) | Selección visual de lo esencial. **Solo cubre la primera entrega** |
+| **Plan de la 2.ª entrega** | `docs/Entrega_2/plan_de_trabajo.md` | Planeación | Menú de módulos, matemática y metas de verificación. Documento de trabajo, no entregable |
+| **Notebooks Pluto** | `notebooks/` | Exploración interactiva | Demostración en vivo; recalculan todo al mover sliders. Uno por configuración (I, II y III), cada uno con las métricas, el observador y los barridos |
 | **Esta guía** | `docs/guia_maestra.md` | Preparación integral | Relaciona todo lo anterior con el código |
 
 ### 10.2 El informe técnico (la fuente de verdad)
@@ -1252,14 +1327,25 @@ Las figuras (`slides_polos.png`, `slides_simple_respuesta.png`,
 
 ### 10.5 Los notebooks Pluto (demostración en vivo)
 
-Dos notebooks reactivos (`01_exploracion_simple.jl`, `02_exploracion_doble.jl`):
-al mover un slider, **todas las celdas dependientes se recalculan solas** (matrices
-$A, B$, eigenvalores, ganancia $K$, polos de lazo cerrado, gráficas y animación).
+**Tres** notebooks reactivos, uno por configuración: al mover un slider, **todas
+las celdas dependientes se recalculan solas** (matrices $A, B$, eigenvalores,
+ganancia $K$, polos de lazo cerrado, gráficas y animación).
 
 | Notebook | Sliders de parámetros | Sliders de control | Condición inicial |
 |---|---|---|---|
 | Simple | $M$, $m$, $L_{bar}$, $g$, $b$ | $Q_{11}$, $Q_{33}$, $R$ | $\theta_0$ |
 | Doble | $M$, $m_1$, $m_2$, $L_1$, $L_2$, $g$ | $Q$ (pos, $\theta_1$, $\theta_2$), $R$ | $\theta_{1,0}$, $\theta_{2,0}$ |
+| Triple **[E2]** | $M$, $m_1..m_3$, $\ell_1..\ell_3$, $g$, $b$ | $Q$ (pos, ángulos), $R$ | $\theta_0$ (los tres) |
+
+**[E2]** Los tres incorporan, además, una segunda parte con todo lo que agregó
+la segunda entrega, reaccionando a los mismos sliders: margen PBH y
+condicionamiento, elipsoide de no saturación con $u_{\max}$ ajustable, periodo
+de muestreo máximo con los polos discretos entrando y saliendo del círculo
+unitario, observador de Luenberger por dualidad (polos, principio de separación
+verificado en vivo, tabla de subconjuntos de sensores y simulación con el
+estimador arrancando en cero) y barridos 1D con la frontera práctica por
+bisección. Es la forma más directa de *ver* que el mismo álgebra corre sobre
+$\mathbb{R}^4$, $\mathbb{R}^6$ y $\mathbb{R}^8$ sin cambios.
 
 El notebook simple incluye, además del análisis, visualizaciones ricas: panel de
 las cuatro variables de estado, señal de control con banda de saturación, retrato
@@ -1274,7 +1360,7 @@ $g = 1.62$ (Luna) y discutir si es más fácil de controlar.
 - `make_report_figs.jl`: genera las figuras del informe técnico (CairoMakie,
   salida estática) y **reporta por consola las métricas** ($t_s$, $\max|u|$,
   $\max|x|$) que se citan en la discusión. Se ejecuta con
-  `julia --project=. docs/resumen_tecnico/make_report_figs.jl`.
+  `julia --project=. docs/Entrega_1/resumen_tecnico/make_report_figs.jl`.
 - `make_slide_figs.jl`: genera las figuras de la presentación con la paleta
   Beamer, incluyendo el mapa de polos y el barrido de condiciones iniciales.
 
@@ -1499,9 +1585,9 @@ real es moderada (4.2 N); el costo se traslada a que el carro se desplace más
 
 ### 13.3 Para profundizar
 
-- **Detalle teórico completo:** informe técnico (`docs/resumen_tecnico/resumen_tecnico.pdf`),
+- **Detalle teórico completo:** informe técnico (`docs/Entrega_1/resumen_tecnico/resumen_tecnico.pdf`),
   con las demostraciones y los dos apéndices de derivación y verificación.
-- **Panorama rápido:** resumen ejecutivo (`docs/resumen_ejecutivo/resumen_ejecutivo.pdf`).
+- **Panorama rápido:** resumen ejecutivo (`docs/Entrega_1/resumen_ejecutivo/resumen_ejecutivo.pdf`).
 - **Código ejecutable:** `main_simple.jl`, `main_double.jl` y los módulos de `src/`.
 - **Exploración interactiva:** notebooks de `notebooks/` (ver instrucciones en el
   `README.md`).
@@ -1532,9 +1618,16 @@ Supuesto de partida: el repositorio está en
 | Instalar dependencias (1 sola vez) | `julia setup.jl` | Entorno listo (precompilado) |
 | Analizar y controlar el simple | `julia main_simple.jl` | Consola + `figures/01`, `02`, `03_animacion_lqr.mp4` |
 | Analizar y controlar el doble | `julia main_double.jl` | Consola + `figures/06`, `07_doble_animacion_lqr.mp4` |
-| Figuras del informe técnico | `julia --project=. docs/resumen_tecnico/make_report_figs.jl` | `docs/resumen_tecnico/figs/*.png` + métricas en consola |
-| Figuras de la presentación | `julia --project=. docs/presentacion/make_slide_figs.jl` | `docs/presentacion/figs/*.png` + métricas en consola |
+| Analizar y controlar el triple **[E2]** | `julia main_triple.jl` | Consola + `figures/09`, `10_triple_animacion_lqr.mp4`, `11_triple_observador.png` |
+| Figuras del informe (1.ª entrega) | `julia --project=. docs/Entrega_1/resumen_tecnico/make_report_figs.jl` | `docs/Entrega_1/resumen_tecnico/figs/*.png` + métricas en consola |
+| Figuras del informe (2.ª entrega) **[E2]** | `julia --project=. -t auto docs/Entrega_2/resumen_tecnico/make_report_figs.jl` | `docs/Entrega_2/resumen_tecnico/figs/*.png` + tablas comparativas en consola |
+| Mapas del atlas de operabilidad **[E2]** | `julia --project=. -t auto docs/Entrega_2/atlas/make_atlas_figs.jl` | `docs/Entrega_2/atlas/figs/atlas_[a-d].png` + caché en `data/*.csv` |
+| Figuras de la presentación | `julia --project=. docs/Entrega_1/presentacion/make_slide_figs.jl` | `docs/Entrega_1/presentacion/figs/*.png` + métricas en consola |
+| Correr las pruebas **[E2]** | `julia --project=. -t auto test/runtests.jl` | 618 pruebas en ocho conjuntos (~90 s) |
 | Exploración interactiva | `julia --project=.` y luego `import Pluto; Pluto.run()` | Notebook en el navegador |
+
+El flag `-t auto` importa en los scripts marcados: sus barridos integran el
+modelo no lineal en cada punto de la malla y se paralelizan sobre las filas.
 
 La carpeta `figures/` se crea sola la primera vez (no hay que crearla a mano).
 
@@ -1684,6 +1777,7 @@ para una demo en vivo durante la presentación.
    notebook"*, pega la ruta y pulsa **Open**:
    - `notebooks/01_exploracion_simple.jl` — péndulo simple ($\mathbb{R}^4$).
    - `notebooks/02_exploracion_doble.jl` — péndulo doble ($\mathbb{R}^6$).
+   - `notebooks/03_exploracion_triple.jl` — péndulo triple ($\mathbb{R}^8$).
 
    La primera apertura precompila CairoMakie y DifferentialEquations (puede tardar
    varios minutos); las siguientes son rápidas.
@@ -1697,11 +1791,17 @@ para una demo en vivo durante la presentación.
    |---|---|---|---|
    | Simple | `M`, `m`, `Lbar`, `g`, `b` | `Q11`, `Q33`, `R` | `theta0` |
    | Doble | `M`, `m1`, `m2`, `L1`, `L2`, `g` | `Q` (pos, `theta1`, `theta2`), `R` | `theta1_0`, `theta2_0` |
+   | Triple | `M`, `m1`-`m3`, `l1`-`l3`, `g`, `b` | `Q` (pos, ángulos), `R` | `theta0` (los tres) |
+
+   Los tres llevan además sliders para la **segunda parte**: `u_max` (elipsoide
+   de no saturación), `h` (periodo de muestreo), `Qo` (rapidez del observador),
+   el parámetro a barrer y la longitud del riel.
 
 5. **Exportar la animación (opcional).** Al final de cada notebook hay una casilla
    (checkbox). Al marcarla se genera el archivo en `figures/`:
    - Simple: `04_comparacion_libre_vs_lqr.gif` (y `05_..._.mp4` si hay `ffmpeg`).
    - Doble: `08_doble_exploracion.gif`.
+   - Triple: `12_triple_exploracion.gif`.
 
    Desmárcala después para no regenerar el archivo en cada cambio de slider.
 
@@ -1719,23 +1819,40 @@ diapositivas **no** se dibujan a mano: las produce un script que reutiliza los
 módulos de `src/`. Además, cada script **imprime por consola las métricas**
 ($t_s$, $\max|u|$, $\max|x|$) que se citan en los textos.
 
-Figuras del informe técnico:
+Figuras del informe técnico de la primera entrega:
 
 ```powershell
-julia --project=. docs/resumen_tecnico/make_report_figs.jl
+julia --project=. docs/Entrega_1/resumen_tecnico/make_report_figs.jl
 ```
 
-Reescribe `docs/resumen_tecnico/figs/` con `simple_respuesta.png`,
+Reescribe `docs/Entrega_1/resumen_tecnico/figs/` con `simple_respuesta.png`,
 `simple_lqr_vs_acker.png` y `doble_respuesta.png`, y reporta las métricas
 (Simple LQR: $t_s = 1.45$ s, $\max|u| = 6.8$ N; etc.).
+
+Figuras del informe de la segunda entrega, y los mapas del atlas **[E2]**:
+
+```powershell
+julia --project=. -t auto docs/Entrega_2/resumen_tecnico/make_report_figs.jl
+julia --project=. -t auto docs/Entrega_2/atlas/make_atlas_figs.jl
+```
+
+El primero produce `Entrega_2/resumen_tecnico/figs/` (`triple_respuesta.png`,
+`degradacion_N.png`, `espectros_tres.png`, `observador.png`) e imprime la tabla
+comparativa de las tres configuraciones, las fronteras prácticas, la tabla de
+subconjuntos de sensores y la comparación de regiones de atracción con y sin
+observador. El segundo produce los cuatro mapas del atlas en
+`docs/Entrega_2/atlas/figs/`; el informe de la segunda entrega los toma de ahí
+mediante `\graphicspath`, así que **no** hay que copiarlos. Los barridos se
+cachean en `docs/Entrega_2/atlas/data/*.csv` (carpeta ignorada por git): para
+forzar el recómputo, borrarla o exportar `ATLAS_FORCE=1`.
 
 Figuras de la presentación:
 
 ```powershell
-julia --project=. docs/presentacion/make_slide_figs.jl
+julia --project=. docs/Entrega_1/presentacion/make_slide_figs.jl
 ```
 
-Reescribe `docs/presentacion/figs/` con `slides_polos.png`,
+Reescribe `docs/Entrega_1/presentacion/figs/` con `slides_polos.png`,
 `slides_simple_respuesta.png`, `slides_simple_casos.png` y
 `slides_doble_respuesta.png` (con la paleta de color de las diapositivas).
 
@@ -1748,24 +1865,27 @@ Requiere una distribución de LaTeX instalada (por ejemplo MiKTeX o TeX Live) co
 `pdflatex` y `latexmk`. **Importante:** las figuras `.png` deben existir antes de
 compilar (paso 14.7), o LaTeX fallará al no encontrarlas.
 
+Cada documento se compila **desde su propia carpeta**, porque las rutas de
+figuras son relativas:
+
 ```powershell
-# Informe tecnico
-cd C:\Users\surib\Proyectos\proyecto-pendulos\docs\resumen_tecnico
-latexmk -pdf resumen_tecnico.tex
+$raiz = "C:\Users\surib\Proyectos\proyecto-pendulos\docs"
 
-# Resumen ejecutivo (reutiliza las figuras del informe tecnico)
-cd C:\Users\surib\Proyectos\proyecto-pendulos\docs\resumen_ejecutivo
-latexmk -pdf resumen_ejecutivo.tex
+# Primera entrega
+cd $raiz\Entrega_1\resumen_tecnico;    latexmk -pdf resumen_tecnico.tex
+cd $raiz\Entrega_1\resumen_ejecutivo;  latexmk -pdf resumen_ejecutivo.tex
+cd $raiz\Entrega_1\presentacion;       latexmk -pdf presentacion.tex
 
-# Presentacion
-cd C:\Users\surib\Proyectos\proyecto-pendulos\docs\presentacion
-latexmk -pdf presentacion.tex
+# Segunda entrega (no lleva presentacion)
+cd $raiz\Entrega_2\resumen_tecnico;    latexmk -pdf resumen_tecnico.tex
+cd $raiz\Entrega_2\resumen_ejecutivo;  latexmk -pdf resumen_ejecutivo.tex
 ```
 
 Si no se dispone de `latexmk`, sirve `pdflatex nombre.tex` ejecutado dos veces
-(la segunda pasada resuelve las referencias cruzadas). El resumen ejecutivo
-apunta a `../resumen_tecnico/figs/`, así que basta con haber generado las figuras
-del informe.
+(la segunda pasada resuelve las referencias cruzadas). Cada resumen ejecutivo
+apunta con `\graphicspath` a las figuras del informe técnico de su entrega, y el
+de la segunda toma además los mapas de `docs/Entrega_2/atlas/figs/`: basta con
+haber generado esas figuras antes.
 
 ### 14.9 Orden recomendado de principio a fin
 
@@ -1778,18 +1898,26 @@ cd C:\Users\surib\Proyectos\proyecto-pendulos
 # 1. Instalar dependencias (una sola vez, tarda varios minutos)
 julia setup.jl
 
-# 2. Correr los dos pipelines (analisis, control, figuras y animaciones)
+# 2. Comprobar que nada se rompio (618 pruebas, ~90 s)
+julia --project=. -t auto test/runtests.jl
+
+# 3. Correr los tres pipelines (analisis, control, figuras y animaciones)
 julia main_simple.jl
 julia main_double.jl
+julia main_triple.jl
 
-# 3. Regenerar las figuras de los documentos y ver las metricas
-julia --project=. docs/resumen_tecnico/make_report_figs.jl
-julia --project=. docs/presentacion/make_slide_figs.jl
+# 4. Regenerar las figuras de los documentos y ver las metricas
+julia --project=. docs/Entrega_1/resumen_tecnico/make_report_figs.jl
+julia --project=. -t auto docs/Entrega_2/resumen_tecnico/make_report_figs.jl
+julia --project=. -t auto docs/Entrega_2/atlas/make_atlas_figs.jl
+julia --project=. docs/Entrega_1/presentacion/make_slide_figs.jl
 
-# 4. (Opcional) Compilar los PDFs
-cd docs\resumen_tecnico;  latexmk -pdf resumen_tecnico.tex
-cd ..\resumen_ejecutivo;  latexmk -pdf resumen_ejecutivo.tex
-cd ..\presentacion;       latexmk -pdf presentacion.tex
+# 5. (Opcional) Compilar los PDFs, cada uno desde su carpeta
+cd docs\Entrega_1\resumen_tecnico;    latexmk -pdf resumen_tecnico.tex
+cd ..\resumen_ejecutivo;              latexmk -pdf resumen_ejecutivo.tex
+cd ..\presentacion;                   latexmk -pdf presentacion.tex
+cd ..\..\Entrega_2\resumen_tecnico;   latexmk -pdf resumen_tecnico.tex
+cd ..\resumen_ejecutivo;              latexmk -pdf resumen_ejecutivo.tex
 ```
 
 ### 14.10 Solución de problemas comunes
@@ -1803,11 +1931,173 @@ cd ..\presentacion;       latexmk -pdf presentacion.tex
 | `julia` no se reconoce | Julia no está en el `PATH` | Reinstalar Julia marcando "Add to PATH", o añadir su carpeta `bin` al `PATH` |
 | LaTeX falla por figura faltante | Las `.png` no se han generado | Correr antes `make_report_figs.jl` y `make_slide_figs.jl` |
 | Los notebooks no encuentran los paquetes | Julia abierto sin `--project=.` | Cerrar y reabrir con `julia --project=.` antes de `Pluto.run()` |
-| Números distintos a los de la sección 9 | Se cambiaron parámetros o pesos | Revisar `default_params`, `default_params_double` y las matrices `Q`, `R` de los `main_*.jl` |
+| Números distintos a los de la sección 9 | Se cambiaron parámetros o pesos | Revisar `default_params`, `default_params_double`, `default_params_triple` y las matrices `Q`, `R` de los `main_*.jl` |
+| El atlas tarda muchísimo | Se corrió sin `-t auto`, o se borró el caché | Usar `-t auto`; los mapas B y D integran el modelo no lineal en 2500 y 1800 puntos |
+| El atlas no recalcula tras cambiar algo | Está leyendo el caché CSV | Borrar `docs/Entrega_2/atlas/data/` o exportar `ATLAS_FORCE=1` |
+
+---
+
+## 15. La segunda entrega: qué añade
+
+Esta sección es un índice, no un desarrollo. Todo lo que sigue está demostrado,
+medido y discutido en `docs/Entrega_2/resumen_tecnico/`, que es la fuente de
+verdad de estos resultados; el plan de trabajo que los originó está en
+`docs/Entrega_2/plan_de_trabajo.md`.
+
+### 15.1 Las cinco grietas que cerró
+
+La primera entrega, tal como queda documentada en las secciones 1 a 14, dejaba
+cinco huecos señalables. La segunda entrega los ataca uno por uno:
+
+| # | Grieta | Respuesta |
+|---|---|---|
+| 1 | La observabilidad se **analizaba y no se usaba**: se demostraba $\operatorname{rank}\mathcal{O} = n$ y luego se controlaba con el estado completo, que no se mide | Observador de Luenberger por dualidad (15.5) |
+| 2 | No había **noción de límite de validez**: se sabía que el LQR funciona, no hasta dónde | Atlas de operabilidad (15.4) |
+| 3 | El **criterio de rango es binario y frágil**, y no se decía | Margen PBH (15.3) |
+| 4 | No había **pruebas automatizadas** | `test/runtests.jl`, 618 pruebas |
+| 5 | Solo **dos puntos** en el eje de complejidad | Configuración III y familia genérica (15.2) |
+
+### 15.2 Una familia en lugar de tres problemas
+
+En vez de deducir una tercera configuración desde cero, se reformuló el modelo
+para $N$ eslabones arbitrarios (`src/model_nlink.jl`). Todo queda organizado por
+tres agrupaciones de parámetros:
+
+$$\beta_j = m_ja_j+\ell_j\!\!\sum_{i>j}m_i, \qquad
+  J_j = I_j+m_ja_j^2+\ell_j^2\!\!\sum_{i>j}m_i, \qquad
+  \Gamma_{jk} = \ell_{\min(j,k)}\,\beta_{\max(j,k)}$$
+
+con las que la matriz de masa y el lado derecho se escriben de una vez para todo
+$N$, y la energía potencial queda simplemente $V = g\sum_j \beta_j\cos\theta_j$.
+De ahí sale una observación que vale la pena tener lista para la defensa: **el
+mismo $\beta_j$ que acopla el carro con el eslabón $j$ en la energía cinética es
+el que pesa la gravedad sobre ese eslabón**. El canal por el que la gravedad
+desestabiliza es el mismo por el que el carro puede actuar; por eso
+inestabilidad y controlabilidad están ligadas en este sistema.
+
+Instanciando: $N=1$ con barra uniforme da la Configuración I, $N=2$ con masas
+puntuales da la II, y $N=3$ con barras uniformes es la nueva **Configuración
+III** ($\mathbb{R}^8$, cuatro grados de libertad, un actuador). Los modelos
+antiguos **no se tocaron**: coexisten con el genérico, de modo que compararlos es
+un contraste entre implementaciones independientes. La discrepancia medida es
+$5.3\times10^{-15}$ para $N=1$ y exactamente cero para $N=2$.
+
+Además, la estructura del espectro que en 9.2 se observaba caso por caso resulta
+ser un teorema. Sin fricción, buscar $q(t)=v e^{\lambda t}$ da el problema
+generalizado $\mathbf{G}_0 v = \lambda^2\mathbf{M}_0 v$, así que los eigenvalores
+de $A$ son las raíces cuadradas de los de $\mathbf{M}_0^{-1}\mathbf{G}_0$ y vienen
+en pares $\pm\lambda$; como $\mathbf{G}_0$ tiene una fila y una columna nulas (el
+carro no tiene fuerza recuperadora), aparece un cero doble:
+
+$$\sigma(A)=\{\pm\lambda_1,\dots,\pm\lambda_N,\ 0,\ 0\}, \qquad N \text{ modos inestables}$$
+
+Es una predicción *a priori*, verificada para $N=1,\dots,5$.
+
+### 15.3 Cuando el rango deja de servir: el margen PBH
+
+Este es el resultado central. La matriz de Kalman
+$\mathcal{C}=[B\ AB\ \cdots\ A^{n-1}B]$ es una **base de Krylov**, y su
+condicionamiento crece unos cuatro órdenes de magnitud por eslabón:
+
+| $N$ | $n$ | $\operatorname{cond}\mathcal{C}$ | $\hat\mu$ (PBH) |
+|---|---|---|---|
+| 1 | 4 | $4.8\times10^{1}$ | $1.31\times10^{-2}$ |
+| 2 | 6 | $6.2\times10^{4}$ | $1.79\times10^{-3}$ |
+| 3 | 8 | $2.2\times10^{8}$ | $4.92\times10^{-4}$ |
+| 4 | 10 | $1.7\times10^{12}$ | $1.90\times10^{-4}$ |
+| 5 | 12 | $3.3\times10^{16}$ | $9.03\times10^{-5}$ |
+
+Con $N=5$ el condicionamiento alcanza $1/\varepsilon_{\text{máq}}$: el rango
+numérico es **ruido**, y sin embargo el sistema sigue siendo controlable en
+aritmética exacta. El teorema del criterio de rango (sección 6.5) sigue siendo
+cierto; el algoritmo que lo implementa deja de serlo.
+
+La herramienta que lo reemplaza es la versión cuantitativa del test PBH:
+
+$$\mu_{\text{PBH}}=\min_{\lambda\in\sigma(A)}\sigma_{\min}\big[\,A-\lambda I\ \big|\ B\,\big],
+\qquad \hat\mu=\frac{\mu_{\text{PBH}}}{\|[A\ \ B]\|_2}$$
+
+Por el **teorema de Eckart-Young**, $\sigma_{\min}$ de una matriz es exactamente
+su distancia en norma 2 al conjunto de matrices de rango deficiente. Es decir,
+$\hat\mu$ mide *cuánto habría que perturbar el sistema para volverlo
+incontrolable*: ya no es binario, y decae suavemente donde el condicionamiento
+estalla. La tesis de la entrega cabe en una frase: **el álgebra escala, el
+condicionamiento no; la respuesta no es cambiar de teoría sino de herramienta**.
+
+### 15.4 El atlas de operabilidad
+
+Barre el espacio de parámetros para decir dónde el controlador sirve y dónde no,
+separando dos imposibilidades que no hay que confundir: la **estructural** (el
+par $(A,B)$ deja de ser controlable; propiedad del sistema, se mide con PBH) y la
+**práctica** (el actuador satura, el riel se acaba, el muestreo es lento;
+propiedad de la implementación, se mide integrando el modelo no lineal y
+biseccionando).
+
+Dos garantías duras de álgebra lineal sostienen el análisis:
+
+- **Elipsoide de no saturación.** El mayor conjunto de nivel de $V=x^\top Px$
+  contenido en $\{|Kx|\le u_{\max}\}$ es $c^\star=u_{\max}^2/(KP^{-1}K^\top)$,
+  por Cauchy-Schwarz (el máximo de una forma lineal sobre un elipsoide es su
+  norma dual). Da $\theta_0 \le \sqrt{c^\star/P_{33}}$: $55.1°$, $13.4°$ y $8.7°$
+  con $u_{\max}=50$ N. **Certifica no saturación más convergencia del sistema
+  lineal**, no la región de atracción no lineal; el atlas muestra el punto exacto
+  ($u_{\max}=85$ N) en que deja de acotar.
+- **Discretización ZOH exacta** por el truco de Van Loan: $A_d$ y $B_d$ salen de
+  una sola exponencial de
+  $\left(\begin{smallmatrix}A&B\\0&0\end{smallmatrix}\right)$, sin
+  integrar ni invertir $A$ (que aquí es singular). Con el criterio de Schur
+  ($|\lambda_i|<1$, el análogo discreto de Hurwitz) se obtiene
+  $h_{\max}$: 197.4, 77.3 y 32.0 ms. El margen relativo $h_{\max}\lambda_{\max}$
+  se estrecha al crecer la complejidad ($0.83\to0.66\to0.58$).
+
+Hallazgos: hay un **óptimo interior** de la masa del carro ($M\approx0.126$ kg)
+donde $\hat\mu$ se maximiza; el **eslabón superior corto es el peligroso**; y la
+restricción práctica activa **cambia con la configuración** (en el simple manda
+el riel, no el motor).
+
+### 15.5 El observador: la dualidad cierra el argumento
+
+Se estima el estado con $\dot{\hat x}=A\hat x+Bu+L(y-C\hat x)$, cuyo error
+obedece $\dot e=(A-LC)e$. Diseñar $L$ es **el problema dual** de diseñar $K$, así
+que por la dualidad de Kalman $L=\operatorname{lqr}(A^\top,C^\top,Q_o,R_o)^\top$
+y **no hace falta escribir un solo algoritmo nuevo**: se reutiliza `design_lqr`
+con su Riccati resuelta por el hamiltoniano (sección 7.3).
+
+El **principio de separación** sale de dos líneas de álgebra lineal: en
+coordenadas $(x,e)$ la matriz de lazo cerrado es triangular por bloques,
+
+$$\begin{pmatrix}A-BK & BK\\ 0 & A-LC\end{pmatrix}
+\quad\Longrightarrow\quad \sigma=\sigma(A-BK)\ \cup\ \sigma(A-LC)$$
+
+así que controlador y observador se diseñan por separado. Verificado con error
+máximo $3.4\times10^{-12}$.
+
+Dos resultados que conviene tener a mano en una defensa:
+
+1. **Medir la posición del carro es condición necesaria y suficiente.** De los
+   $2^4-1=15$ subconjuntos de sensores, los $8$ que incluyen $x$ son observables
+   y los $7$ que no, se quedan en $\operatorname{rank}\mathcal{O}=7$: midiendo
+   solo ángulos, la dinámica angular es invariante a trasladar el carro. Basta
+   **un** sensor, pero con margen $1.5\times10^{-6}$, dos órdenes peor que el
+   juego completo. *Observable no es lo mismo que practicable.*
+2. **El observador no sale gratis.** El principio de separación es un teorema
+   sobre el sistema **lineal**. Sobre el no lineal la región de atracción se
+   encoge entre la mitad y la cuarta parte, al punto de que la condición inicial
+   nominal del informe converge con estado completo y **diverge** con observador.
+
+### 15.6 Qué quedó propuesto y no medido
+
+Registrarlo es parte del resultado: la capa no lineal de la región de atracción
+(acotar el residuo de la linealización para obtener una garantía rigurosa fuera
+del régimen lineal), el rediseño del LQR directamente en tiempo discreto (DARE
+por la matriz simpléctica, paralelo estructural con el hamiltoniano), la
+verificación simbólica de los jacobianos con `Symbolics`, la robustez
+paramétrica, el LQR con acción integral y el *swing-up* energético.
 
 ---
 
 *Documento maestro del proyecto. Toda la información numérica proviene de ejecutar
 el código de `src/` y los pipelines `main_*.jl`; toda la información teórica está
-desarrollada en detalle en el informe técnico. Ante cualquier discrepancia, la
-fuente de verdad es el código en ejecución y el informe técnico.*
+desarrollada en detalle en los informes técnicos. Ante cualquier discrepancia, la
+fuente de verdad es el código en ejecución y el informe técnico de la entrega
+correspondiente.*
