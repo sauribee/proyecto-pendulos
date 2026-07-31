@@ -37,10 +37,11 @@ include(joinpath(PROJ_ROOT, "src", "model_triple.jl"))
 include(joinpath(PROJ_ROOT, "src", "linearization.jl"))
 include(joinpath(PROJ_ROOT, "src", "controller.jl"))
 include(joinpath(PROJ_ROOT, "src", "metrics.jl"))
+include(joinpath(PROJ_ROOT, "src", "observer.jl"))
 include(joinpath(PROJ_ROOT, "src", "sweep.jl"))
 
 using .Model, .ModelDouble, .ModelNLink, .ModelTriple
-using .Linearization, .Controller, .Metrics, .Sweep
+using .Linearization, .Controller, .Metrics, .Observer, .Sweep
 
 using Test
 using LinearAlgebra
@@ -589,6 +590,90 @@ const R_STD = reshape([0.1], 1, 1)
             K3 = design_lqr(ss3.A, ss3.B, default_weights(8), R_STD).K
             @test max_recoverable_angle(p3, K3; umax=50.0, x_rail=1.5) ≈
                   max_recoverable_angle(p3, K3; umax=50.0, x_rail=1e6) atol = 1e-3
+        end
+    end
+
+    # =======================================================================
+    @testset "8. Observador y dualidad" begin
+        casos = [
+            ("simple", linearize_system(default_params())),
+            ("doble", linearize_system_double(default_params_double())),
+            ("triple", linearize_system_triple(default_params_triple())),
+        ]
+
+        for (nombre, ss) in casos
+            @testset "$nombre" begin
+                A, B, C = ss.A, ss.B, ss.C
+                n, p = size(A, 1), size(C, 1)
+                Qo, Ro = 100.0 * Matrix(I, n, n), Matrix(I, p, p)
+
+                K = design_lqr(A, B, default_weights(n), R_STD).K
+                obs = design_observer(A, C, Qo, Ro)
+
+                # Dualidad exacta: L es la K del sistema traspuesto.
+                K_dual = design_lqr(Matrix(A'), Matrix(C'), Qo, Ro).K
+                @test obs.L ≈ Matrix(K_dual') atol = 1e-12
+
+                # El observador es estable: el error de estimacion decae.
+                @test all(real.(obs.eigenvalues_obs) .< 0)
+                @test size(obs.L) == (n, p)
+
+                # PRINCIPIO DE SEPARACION: el espectro del sistema aumentado es
+                # la union de los dos espectros, porque la matriz aumentada es
+                # triangular por bloques.
+                sep = check_separation(A, B, C, K, obs.L)
+                @test sep.holds
+                @test sep.max_error < 1e-8
+
+                # La estructura de la matriz aumentada es la esperada.
+                M = augmented_closed_loop(A, B, C, K, obs.L)
+                @test M[1:n, 1:n] ≈ A - B * K
+                @test M[1:n, n+1:2n] ≈ B * K
+                @test all(M[n+1:2n, 1:n] .== 0)     # triangular por bloques
+                @test M[n+1:2n, n+1:2n] ≈ A - obs.L * C
+            end
+        end
+
+        @testset "subconjuntos de sensores del triple" begin
+            ss = linearize_system_triple(default_params_triple())
+            tabla = sensor_subset_analysis(ss.A, ss.C,
+                                           ["pos", "th1", "th2", "th3"])
+            @test length(tabla) == 15          # 2^4 - 1 subconjuntos no vacios
+
+            observables = filter(f -> f.observable, tabla)
+            no_obs = filter(f -> !f.observable, tabla)
+
+            # Todo subconjunto que incluya la posicion del carro es observable;
+            # ninguno que la excluya lo es. Midiendo solo angulos, la posicion
+            # absoluta del carro es inobservable: la dinamica angular es
+            # invariante a trasladar el carro. De ahi el rango 7/8 exacto.
+            @test all(f -> 1 in f.indices, observables)
+            @test all(f -> !(1 in f.indices), no_obs)
+            @test all(f -> f.rank == 7, no_obs)
+            @test length(observables) == 8     # los 2^3 que contienen "pos"
+
+            # El juego minimo observable es un unico sensor: la posicion.
+            minimo = observables[argmin(length(f.indices) for f in observables)]
+            @test minimo.indices == [1]
+
+            # Pero su margen es dos ordenes peor que el del juego completo:
+            # observable no es lo mismo que practicable.
+            completo = tabla[1]
+            @test completo.indices == [1, 2, 3, 4]
+            @test minimo.margin_normalized < completo.margin_normalized / 50
+        end
+
+        @testset "Ackermann dual solo con una salida" begin
+            ss = linearize_system(default_params())
+            # Con una sola salida (la posicion) el dual de Ackermann aplica y
+            # debe reproducir exactamente los polos pedidos.
+            C1 = reshape(ss.C[1, :], 1, 4)
+            polos = [-6.0, -7.0, -8.0, -9.0]
+            res = design_observer_poles(ss.A, C1, polos)
+            @test sort(real.(res.eigenvalues_obs)) ≈ sort(polos) atol = 1e-6
+
+            # Con varias salidas debe rechazar, no dar un resultado silencioso.
+            @test_throws ErrorException design_observer_poles(ss.A, ss.C, polos)
         end
     end
 end

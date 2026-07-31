@@ -30,6 +30,8 @@ proyecto-pendulos/
 │   ├── linearization.jl          Linealizacion (simple, doble, generica en N), espectro, Kalman
 │   ├── controller.jl             LQR (Riccati via Hamiltoniano) y Ackermann (genericos)
 │   ├── metrics.jl                Margen PBH, condicionamiento, elipsoide, ZOH (genericos)
+│   ├── observer.jl               Observador de Luenberger por dualidad, separacion
+│   ├── sweep.jl                  Barridos y fronteras de operabilidad (genericos)
 │   ├── animation_simple.jl       Animacion del pendulo simple (GLMakie)
 │   ├── animation_double.jl       Animacion del pendulo doble (GLMakie)
 │   └── animation_triple.jl       Animacion de N eslabones (GLMakie)
@@ -241,6 +243,42 @@ Las figuras de las diapositivas se regeneran de forma análoga:
 ```bash
 julia --project=. docs/presentacion/make_slide_figs.jl
 ```
+
+## Observador de estado y dualidad
+
+El control $u = -K\mathbf{x}$ usa el estado **completo**, que en un sistema real
+no se mide: nadie pone un sensor de velocidad angular en cada articulación. Como
+$\operatorname{rank}\mathcal{O} = n$, el estado se puede reconstruir con un
+observador de Luenberger
+
+$$\dot{\hat{\mathbf{x}}} = A\hat{\mathbf{x}} + Bu + L(\mathbf{y} - C\hat{\mathbf{x}}),
+\qquad \dot{\mathbf{e}} = (A - LC)\,\mathbf{e}$$
+
+y por la **dualidad de Kalman** la ganancia sale de la misma rutina que diseñó
+$K$, sin escribir ningún algoritmo nuevo: $L = \operatorname{lqr}(A^\top, C^\top, Q_o, R_o)^\top$.
+
+El **principio de separación** sale de dos líneas de álgebra lineal: en
+coordenadas $(\mathbf{x}, \mathbf{e})$ la matriz de lazo cerrado es triangular
+por bloques,
+
+$$\begin{pmatrix}A - BK & BK\\ 0 & A - LC\end{pmatrix}
+\quad\Longrightarrow\quad
+\sigma = \sigma(A-BK)\ \cup\ \sigma(A-LC)$$
+
+así que controlador y observador se diseñan por separado. Verificado
+numéricamente a $3\times10^{-12}$ en las tres configuraciones.
+
+**¿Qué sensores hacen falta?** De los $2^4-1 = 15$ subconjuntos de
+$\{x, \theta_1, \theta_2, \theta_3\}$ en la Configuración III:
+
+- Todo subconjunto que **incluya la posición del carro** es observable ($8/8$).
+- Ninguno que la excluya lo es: se quedan en $7/8$. Midiendo solo ángulos, la
+  posición absoluta del carro es inobservable, porque la dinámica angular es
+  invariante a trasladar el carro.
+- El juego **mínimo** es un único sensor: la posición del carro. Basta para
+  reconstruir los ocho estados — pero con margen PBH $1.5\times10^{-6}$, dos
+  órdenes por debajo del juego completo ($1.6\times10^{-4}$). Observable no es
+  lo mismo que practicable.
 
 ## Atlas de operabilidad
 

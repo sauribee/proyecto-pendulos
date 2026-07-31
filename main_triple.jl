@@ -10,6 +10,7 @@
 #   6. Simular respuesta controlada (lazo cerrado)
 #   7. Generar graficas comparativas
 #   8. Animar el pendulo triple
+#   9. Observador de Luenberger: controlar sin medir el estado completo
 #
 # Reutiliza sin cambios los modulos genericos Controller (LQR/Riccati), las
 # funciones de analisis de Linearization y las metricas de Metrics: ninguno
@@ -27,6 +28,7 @@ include("src/model_triple.jl")
 include("src/linearization.jl")
 include("src/controller.jl")
 include("src/metrics.jl")
+include("src/observer.jl")
 include("src/animation_simple.jl")
 include("src/animation_triple.jl")
 
@@ -35,6 +37,7 @@ using .ModelTriple
 using .Linearization
 using .Controller
 using .Metrics
+using .Observer
 using .Animation
 using .AnimationTriple
 
@@ -262,5 +265,105 @@ anim_data = animate_pendulum_triple(sol_lqr, params,
 
 path_10 = joinpath(FIG_DIR, "10_triple_animacion_lqr.mp4")
 save_animation(anim_data, path_10, fps=30)
+
+# ===========================================================================
+# PASO 9: Observador de Luenberger
+# ===========================================================================
+# Hasta aqui el control ha sido u = -K x, con el estado COMPLETO. En un sistema
+# real eso no se mide: nadie pone un sensor de velocidad angular en cada
+# articulacion. Como rank(Obsv) = 8, el estado se puede reconstruir, y por la
+# dualidad de Kalman la ganancia del observador sale de la MISMA rutina que
+# diseno K, sin escribir un algoritmo nuevo.
+
+println("\n" * "=" ^ 60)
+println("  PASO 9: OBSERVADOR DE LUENBERGER")
+println("=" ^ 60)
+
+# Que sensores hacen falta de verdad
+tabla_sensores = sensor_subset_analysis(ss.A, ss.C, ["pos", "th1", "th2", "th3"])
+println()
+print_sensor_table(tabla_sensores, 8; label="Configuracion III")
+
+# Diseno por dualidad. Qo grande frente a Ro significa confiar poco en el
+# modelo y mucho en los sensores: el observador se hace rapido.
+Qo = 100.0 * Matrix(I, 8, 8)
+Ro = Matrix(I, 4, 4)
+obs = design_observer(ss.A, ss.C, Qo, Ro)
+
+println("\n  Polos del observador (A - L C):")
+for lambda in sort(obs.eigenvalues_obs, by=real)
+    if abs(imag(lambda)) < 1e-10
+        @printf("  %+.4f\n", real(lambda))
+    else
+        @printf("  %+.4f %+.4fi\n", real(lambda), imag(lambda))
+    end
+end
+
+# Principio de separacion, comprobado numericamente
+sep = check_separation(ss.A, ss.B, ss.C, lqr_result.K, obs.L)
+@printf("\n  Principio de separacion: error maximo = %.3e -> %s\n",
+        sep.max_error, sep.holds ? "SE CUMPLE" : "NO SE CUMPLE")
+println("  El espectro del sistema aumentado es la union de spec(A-BK) y")
+println("  spec(A-LC), porque la matriz aumentada es triangular por bloques.")
+
+# Simulacion: la planta arranca inclinada y el estimador arranca en CERO, es
+# decir con el maximo desconocimiento posible sobre el estado inicial.
+x0_obs = zeros(8)
+x0_obs[3] = 0.10
+z0 = vcat(x0_obs, zeros(8))
+
+p_obs = (params=params, eom! = nonlinear_eom_triple!,
+         A=ss.A, B=ss.B, C=ss.C, K=lqr_result.K, L=obs.L, saturate=saturation)
+sol_obs = solve(ODEProblem(observer_eom!, z0, tspan_ctrl, p_obs),
+                Tsit5(), saveat=0.002)
+
+err_obs = [norm(u[1:8] .- u[9:16]) for u in sol_obs.u]
+@printf("\n  Error inicial de estimacion: ||e(0)|| = %.4f\n", err_obs[1])
+@printf("  Error final:                 ||e(T)|| = %.3e\n", err_obs[end])
+i_1pct = findfirst(e -> e < 0.01 * err_obs[1], err_obs)
+if i_1pct !== nothing
+    @printf("  Cae al 1%% del inicial en t = %.2f s\n", sol_obs.t[i_1pct])
+end
+
+fig_obs = Figure(size=(1300, 800))
+
+# --- theta1: real contra estimado (variable MEDIDA) ---
+ax_o1 = Axis(fig_obs[1, 1], title="theta1 -- variable medida",
+             xlabel="Tiempo [s]", ylabel="theta1 [rad]")
+lines!(ax_o1, sol_obs.t, [u[3] for u in sol_obs.u], color=:black,
+       linewidth=2.5, label="real")
+lines!(ax_o1, sol_obs.t, [u[11] for u in sol_obs.u], color=:orange,
+       linewidth=2, linestyle=:dash, label="estimado")
+axislegend(ax_o1, position=:rt)
+
+# --- omega1: real contra estimado (variable NO medida) ---
+ax_o2 = Axis(fig_obs[1, 2], title="omega1 -- variable NO medida (reconstruida)",
+             xlabel="Tiempo [s]", ylabel="omega1 [rad/s]")
+lines!(ax_o2, sol_obs.t, [u[4] for u in sol_obs.u], color=:black,
+       linewidth=2.5, label="real")
+lines!(ax_o2, sol_obs.t, [u[12] for u in sol_obs.u], color=:orange,
+       linewidth=2, linestyle=:dash, label="estimado")
+axislegend(ax_o2, position=:rt)
+
+# --- Norma del error de estimacion, en escala log ---
+ax_o3 = Axis(fig_obs[2, 1], title="Error de estimacion ||e(t)|| = ||x - xhat||",
+             xlabel="Tiempo [s]", ylabel="||e|| ", yscale=log10)
+lines!(ax_o3, sol_obs.t, max.(err_obs, 1e-12), color=:purple, linewidth=2)
+
+# --- Fuerza de control: con observador contra estado completo ---
+ax_o4 = Axis(fig_obs[2, 2],
+             title="Fuerza de control: u = -K xhat contra u = -K x",
+             xlabel="Tiempo [s]", ylabel="F [N]")
+u_obs = [clamp(-dot(lqr_result.K[1, :], u[9:16]), -saturation, saturation)
+         for u in sol_obs.u]
+lines!(ax_o4, sol_obs.t, u_obs, color=:green, linewidth=2,
+       label="con observador")
+lines!(ax_o4, sol_lqr.t, F_lqr, color=:blue, linewidth=2, linestyle=:dash,
+       label="con estado completo")
+axislegend(ax_o4, position=:rt)
+
+path_11 = joinpath(FIG_DIR, "11_triple_observador.png")
+save(path_11, fig_obs, px_per_unit=2)
+println("\n  Guardada: $path_11")
 
 println("\nPendulo triple completo. Revisa la carpeta figures/")
