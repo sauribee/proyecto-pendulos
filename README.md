@@ -90,8 +90,8 @@ proyecto-pendulos/
     │   ├── resumen_ejecutivo/
     │   │   ├── resumen_ejecutivo.tex
     │   │   └── resumen_ejecutivo.pdf
-    │   └── presentacion/           Diapositivas (Beamer, 16:9, 20 minutos)
-    │       ├── presentacion.tex    La segunda entrega no lleva presentacion
+    │   └── presentacion/
+    │       ├── presentacion.tex
     │       ├── presentacion.pdf
     │       ├── make_slide_figs.jl
     │       └── figs/
@@ -292,7 +292,7 @@ y detén el servidor con `Ctrl-C` en la terminal de Julia.
   $\{+18.06,\ +9.77,\ +4.38,\ 0,\ -0.06,\ -4.40,\ -9.78,\ -18.06\}$ (3 modos
   inestables); rangos $8/8$;
   LQR $K=(-3.16,\,-6.17,\,-317.43,\,-4.37,\,911.95,\,37.73,\,-667.37,\,-61.42)$
-  con $\|K\|_2 = 1176$.
+  con $\lVert K\rVert_2 = 1176$.
 
 Sobre el modelo **no lineal** en lazo cerrado, desde la condición inicial nominal
 de cada configuración:
@@ -316,9 +316,9 @@ Con los parámetros por defecto de cada una:
 | Modos inestables | 1 | 2 | 3 |
 | $\lambda_{\max}$ [s$^{-1}$] | 4.21 | 8.57 | 18.06 |
 | $\tau_{\text{caída}}$ [ms] | 237.5 | 116.7 | 55.4 |
-| $\operatorname{cond}\mathcal{C}$ | $3.6\times10^{1}$ | $1.6\times10^{4}$ | $2.2\times10^{8}$ |
+| $\mathrm{cond}\,\mathcal{C}$ | $3.6\times10^{1}$ | $1.6\times10^{4}$ | $2.2\times10^{8}$ |
 | $\hat\mu$ (margen PBH) | $1.72\times10^{-2}$ | $2.56\times10^{-3}$ | $4.92\times10^{-4}$ |
-| $\|K\|_2$ | 47.0 | 300.5 | 1176.0 |
+| $\lVert K\rVert_2$ | 47.0 | 300.5 | 1176.0 |
 | $\theta_0$ garantizado sin saturar ($u_{\max}=50$ N) | $55.1°$ | $13.4°$ | $8.7°$ |
 | $h_{\max}$ (ZOH) [ms] | 197.4 | 77.3 | 32.0 |
 
@@ -334,7 +334,7 @@ $\mathcal{C}=[B\ \ AB\ \cdots\ A^{n-1}B]$ es una **base de Krylov**, notoriament
 mal condicionada. Medido sobre una familia normalizada (longitud total 1 m, masa
 total 0.6 kg repartidas en $N$ barras uniformes, $M=1$ kg, $b=0.1$):
 
-| $N$ | $n$ | $\lambda_{\max}$ [s$^{-1}$] | $\hat\mu$ (PBH) | $\operatorname{cond}\mathcal{C}$ | $\|K\|_2$ |
+| $N$ | $n$ | $\lambda_{\max}$ [s$^{-1}$] | $\hat\mu$ (PBH) | $\mathrm{cond}\,\mathcal{C}$ | $\lVert K\rVert_2$ |
 |---|---|---|---|---|---|
 | 1 | 4  | 4.51  | $1.31\times10^{-2}$ | $4.8\times10^{1}$  | 52.9 |
 | 2 | 6  | 10.59 | $1.79\times10^{-3}$ | $6.2\times10^{4}$  | 248.7 |
@@ -357,7 +357,7 @@ $$\mu_{\text{PBH}}=\min_{\lambda\in\sigma(A)}\ \sigma_{\min}\big[\,A-\lambda I \
 que por el **teorema de Eckart–Young** es exactamente la distancia en norma 2 al
 conjunto de matrices de rango deficiente: mide *cuánto habría que perturbar el
 sistema para volverlo incontrolable*. A diferencia de
-$\operatorname{cond}\mathcal{C}$, que estalla casi quince órdenes de magnitud,
+$\mathrm{cond}\,\mathcal{C}$, que estalla casi quince órdenes de magnitud,
 el margen PBH decae poco más de dos órdenes —un factor 145— y sigue siendo
 utilizable para comparar y para barrer.
 
@@ -365,14 +365,14 @@ utilizable para comparar y para barrer.
 
 El control $u = -K\mathbf{x}$ usa el estado **completo**, que en un sistema real
 no se mide: nadie pone un sensor de velocidad angular en cada articulación. Como
-$\operatorname{rank}\mathcal{O} = n$, el estado se puede reconstruir con un
+$\mathrm{rank}\,\mathcal{O} = n$, el estado se puede reconstruir con un
 observador de Luenberger
 
 $$\dot{\hat{\mathbf{x}}} = A\hat{\mathbf{x}} + Bu + L(\mathbf{y} - C\hat{\mathbf{x}}),
 \qquad \dot{\mathbf{e}} = (A - LC)\,\mathbf{e}$$
 
 y por la **dualidad de Kalman** la ganancia sale de la misma rutina que diseñó
-$K$, sin escribir ningún algoritmo nuevo: $L = \operatorname{lqr}(A^\top, C^\top, Q_o, R_o)^\top$.
+$K$, sin escribir ningún algoritmo nuevo: $L = \mathrm{lqr}(A^\top, C^\top, Q_o, R_o)^\top$.
 
 El **principio de separación** sale de dos líneas de álgebra lineal: en
 coordenadas $(\mathbf{x}, \mathbf{e})$ la matriz de lazo cerrado es triangular
