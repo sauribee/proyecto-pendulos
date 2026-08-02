@@ -75,7 +75,7 @@
 \addto\captionsspanish{\renewcommand{\tablename}{Tabla}}
 
 % Figuras: las propias del informe técnico de esta entrega y los mapas del atlas.
-\graphicspath{{../resumen_tecnico/figs/}{../atlas/figs/}}
+\graphicspath{{../informe_tecnico/figs/}{../atlas/figs/}}
 
 % ============================================================
 \begin{document}
@@ -83,8 +83,7 @@
 % ── Cabecera ────────────────────────────────────────────────
 \begin{center}
     {\footnotesize\bfseries\color{acento2} RESUMEN EJECUTIVO --- SEGUNDA ENTREGA}\\[0.4em]
-    {\LARGE\bfseries Cuándo el Álgebra Lineal Deja de Bastar \\[0.15em]
-     y qué la Reemplaza}\\[0.6em]
+    {\LARGE\bfseries El Límite No Es Teórico, Es Numérico}\\[0.6em]
     {\normalsize Mateo Bedoya Rojas \quad\textbullet\quad Camilo Alejandro Patiño Osorio \quad\textbullet\quad Santiago Uribe Echavarría}\\[0.3em]
     {\footnotesize Facultad de Ciencias, Universidad Nacional de Colombia, Sede Medellín}
 \end{center}
@@ -158,17 +157,17 @@ algoritmo nuevo.
 \textbf{618 pruebas de regresión}, que contrastan los jacobianos analíticos
 contra diferenciación automática y reproducen cada cifra publicada.
 
-\noindent\emph{Detalle: informe técnico~\cite{tecnico2}, Secciones~2 a~7.}
+\noindent\emph{Detalle: informe técnico~\cite{tecnico2}, Secciones~2 a~8.}
 
 % ============================================================
 \section{Resultados}
 
 \begin{table}[htbp]
   \centering\small
-  \caption{Las tres configuraciones con sus parámetros por defecto. El ángulo
-  garantizado es el mayor $\theta_0$ para el que se demuestra que el actuador de
-  50~N no satura; $h_{\max}$ es el mayor período de muestreo que conserva la
-  estabilidad en tiempo discreto.}
+  \caption{Las tres configuraciones con sus parámetros por defecto.
+  $\operatorname{cond}\calC$ es el número de condición de la matriz de Kalman y
+  $h_{\max}$ el mayor período de muestreo que conserva la estabilidad en tiempo
+  discreto.}
   \label{tab:exec2}
   \begin{tabular}{@{}lcccccc@{}}
     \toprule
@@ -184,17 +183,17 @@ contra diferenciación automática y reproducen cada cifra publicada.
 \textbf{La Configuración III se controla.} Espectro de lazo abierto con
 \emph{tres} modos inestables, el dominante en $+18.06$~s$^{-1}$ ---el sistema se
 desploma cuatro veces más rápido que el simple---, rangos $8/8$ y estabilización
-completa en 1.85~s con un pico de fuerza de 7.29~N.
+completa en 1.88~s con un pico de fuerza de 7.29~N.
 
 \textbf{El álgebra escala, el condicionamiento no.} Éste es el resultado
 central. El criterio de rango sigue dando la respuesta correcta para las tres
 configuraciones, pero el condicionamiento~\cite{golub2013} de la matriz de
 Kalman crece unos
-cuatro órdenes de magnitud por eslabón: con cinco eslabones alcanza
-$3.3\times10^{16}$, es decir $1/\varepsilon_{\text{máq}}$, y el rango numérico pasa
-a ser \emph{ruido} aunque el sistema siga siendo controlable en aritmética
-exacta. El margen PBH, en cambio, decae suavemente ---dos órdenes y medio en el
-mismo rango--- y sigue siendo utilizable.
+cuatro órdenes de magnitud por eslabón: con cinco eslabones llega a
+$3.3\times10^{16}$, siete veces por encima de $1/\varepsilon_{\text{máq}}$, y el
+rango numérico pasa a ser \emph{ruido} aunque el sistema siga siendo controlable
+en aritmética exacta. El margen PBH, en cambio, decae suavemente ---poco más de
+dos órdenes en el mismo rango--- y sigue siendo utilizable.
 
 \begin{figure}[htbp]
   \centering
@@ -239,7 +238,7 @@ peor que el del juego completo. \emph{Observable no es lo mismo que
 practicable}, distinción que un criterio binario de rango no puede expresar.
 
 \noindent\emph{Tablas y figuras completas: informe técnico~\cite{tecnico2},
-Secciones~4 a~6.}
+Secciones~3 a~7.}
 
 % ============================================================
 \section{Honestidad sobre el alcance}
@@ -295,9 +294,9 @@ Carro mediante Álgebra Lineal Aplicada --- Informe Técnico, primera entrega}.
 Universidad Nacional de Colombia, Sede Medellín, 2026.
 
 \bibitem{tecnico2}
-M.~Bedoya, C.~Patiño y S.~Uribe, \emph{Cuándo el Álgebra Lineal Deja de Bastar y
-qué la Reemplaza --- Informe Técnico, segunda entrega}. Universidad Nacional de
-Colombia, Sede Medellín, 2026.
+M.~Bedoya, C.~Patiño y S.~Uribe, \emph{El Límite No Es Teórico, Es Numérico ---
+Informe Técnico, segunda entrega}. Universidad Nacional de Colombia, Sede
+Medellín, 2026.
 
 \bibitem{boyd2018}
 S.~Boyd y L.~Vandenberghe, \emph{Introduction to Applied Linear Algebra:

@@ -74,7 +74,6 @@ Estructura del proyecto:
     notebooks/           Pluto notebooks
     figures/             Graficas y animaciones generadas
     docs/
-      guia_maestra.md    Documento maestro (cubre las dos entregas)
       Entrega_1/         Informe tecnico, resumen ejecutivo y presentacion
       Entrega_2/         Informe tecnico, resumen ejecutivo y atlas de operabilidad
 

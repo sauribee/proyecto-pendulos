@@ -28,29 +28,6 @@ begin
     using PlutoUI
 end
 
-# ╔═╡ 00000002-0000-4000-8000-000000000000
-md"""
-# Pendulo Invertido Triple -- Exploracion Interactiva
-
-**Proyecto de Algebra Lineal Aplicada -- Configuracion III**
-
-Un carro con **tres** eslabones articulados en serie, modelados como barras
-uniformes con inercia. Cuatro grados de libertad y **un solo actuador**: la
-subactuacion pasa de ``2\!:\!1`` en la Configuracion I a ``4\!:\!1`` aqui. El
-estado tiene dimension 8:
-
-``\mathbf{x} = [x,\ \dot{x},\ \theta_1,\ \omega_1,\ \theta_2,\ \omega_2,\ \theta_3,\ \omega_3]^T``
-
-Este notebook recorre todo lo implementado en la segunda entrega: el modelo
-generico de ``N`` eslabones, las metricas de viabilidad (margen PBH,
-condicionamiento, elipsoide de no saturacion, periodo de muestreo), el
-observador de Luenberger por dualidad y los barridos del atlas de operabilidad.
-
-Mueve los sliders y todas las celdas dependientes se recalculan automaticamente.
-
----
-"""
-
 # ╔═╡ 00000003-0000-4000-8000-000000000000
 begin
     include(joinpath(@__DIR__, "..", "src", "model_nlink.jl"))
@@ -74,6 +51,29 @@ begin
     `Controller`, `Metrics`, `Observer`, `Sweep`.
     """
 end
+
+# ╔═╡ 00000002-0000-4000-8000-000000000000
+md"""
+# Pendulo Invertido Triple -- Exploracion Interactiva
+
+**Proyecto de Algebra Lineal Aplicada -- Configuracion III**
+
+Un carro con **tres** eslabones articulados en serie, modelados como barras
+uniformes con inercia. Cuatro grados de libertad y **un solo actuador**: la
+subactuacion pasa de ``2\!:\!1`` en la Configuracion I a ``4\!:\!1`` aqui. El
+estado tiene dimension 8:
+
+``\mathbf{x} = [x,\ \dot{x},\ \theta_1,\ \omega_1,\ \theta_2,\ \omega_2,\ \theta_3,\ \omega_3]^T``
+
+Este notebook recorre todo lo implementado en la segunda entrega: el modelo
+generico de ``N`` eslabones, las metricas de viabilidad (margen PBH,
+condicionamiento, elipsoide de no saturacion, periodo de muestreo), el
+observador de Luenberger por dualidad y los barridos del atlas de operabilidad.
+
+Mueve los sliders y todas las celdas dependientes se recalculan automaticamente.
+
+---
+"""
 
 # ╔═╡ 00000004-0000-4000-8000-000000000000
 md"""

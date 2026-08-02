@@ -1,7 +1,7 @@
 # =============================================================================
 # make_report_figs.jl -- Figuras del informe tecnico de la SEGUNDA ENTREGA
 # =============================================================================
-# Produce, en Entrega_2/resumen_tecnico/figs/, las graficas propias de este
+# Produce, en Entrega_2/informe_tecnico/figs/, las graficas propias de este
 # informe, y reporta por consola las metricas que se citan en la discusion.
 # Usa CairoMakie (salida estatica).
 #
@@ -10,12 +10,12 @@
 # mediante \graphicspath. Duplicar ese calculo no aportaria nada.
 #
 # Ejecutar desde la carpeta del proyecto:
-#   julia --project=. -t auto docs/Entrega_2/resumen_tecnico/make_report_figs.jl
+#   julia --project=. -t auto docs/Entrega_2/informe_tecnico/make_report_figs.jl
 # =============================================================================
 
 using Pkg
-# Este script vive en docs/Entrega_2/resumen_tecnico/; la raiz del proyecto
-# esta tres niveles arriba (resumen_tecnico -> Entrega_2 -> docs -> raiz).
+# Este script vive en docs/Entrega_2/informe_tecnico/; la raiz del proyecto
+# esta tres niveles arriba (informe_tecnico -> Entrega_2 -> docs -> raiz).
 const PROJ_ROOT = normpath(joinpath(@__DIR__, "..", "..", ".."))
 Pkg.activate(PROJ_ROOT)
 
@@ -37,7 +37,7 @@ using CairoMakie
 const FIGS = joinpath(@__DIR__, "figs")
 isdir(FIGS) || mkpath(FIGS)
 
-# Paleta del informe (la misma de Entrega_1/resumen_tecnico/make_report_figs.jl)
+# Paleta del informe (la misma de Entrega_1/informe_tecnico/make_report_figs.jl)
 const C_LQR  = RGBf(0.122, 0.349, 0.553)   # azul
 const C_FREE = RGBf(0.706, 0.165, 0.165)   # rojo
 const C_ACK  = RGBf(0.851, 0.498, 0.114)   # naranja
@@ -120,6 +120,11 @@ println("\n  Guardada: triple_respuesta.png")
 for j in 1:3
     @printf("    t_s(theta%d) = %.2f s\n", j, settling_time(sol_lqr.t, th_lqr[j]))
 end
+# El "asentamiento completo" que se cita en el resumen ejecutivo es el mayor de
+# los tres, no un promedio: el lazo no esta asentado hasta que lo esta el ultimo
+# eslabon. Se imprime aparte para que la cifra publicada no haya que deducirla.
+@printf("    t_s(los tres dentro de la banda) = %.2f s\n",
+        maximum(settling_time(sol_lqr.t, th_lqr[j]) for j in 1:3))
 @printf("    fuerza pico = %.2f N   excursion del carro = %.3f m\n",
         pico, maximum(abs.(x_lqr)))
 
@@ -395,6 +400,41 @@ for (nombre, p) in CONFIGS
             abs(sr - fr) > 0.01 ? "RIEL" : "SATURACION")
 end
 
+# ---------------------------------------------------------------------------
+# Exactitud de la discretizacion ZOH por el truco de Van Loan
+# ---------------------------------------------------------------------------
+# El informe afirma que la implementacion reproduce exp(A h) y la integral "a
+# precision de maquina". La referencia contra la que se contrasta es la serie de
+# Taylor de orden 20 evaluada en BigFloat de 256 bits: asi el residuo que queda
+# es el redondeo de la aritmetica de doble precision y no un error del metodo.
+# La cifra se imprime aqui porque se cita en el texto.
+
+"Serie de Taylor de orden `orden` para exp(A h) y para la integral de exp(A t)."
+function taylor_zoh(A, h; orden=20)
+    n = size(A, 1)
+    Ab, hb = BigFloat.(A), BigFloat(h)
+    expo = Matrix{BigFloat}(I, n, n)
+    integ = Matrix{BigFloat}(I, n, n) * hb
+    term = Matrix{BigFloat}(I, n, n)
+    for k in 1:orden
+        term = term * Ab * hb / k
+        expo += term
+        integ += term * hb / (k + 1)
+    end
+    return expo, integ
+end
+
+setprecision(BigFloat, 256)
+println("\n  Discretizacion ZOH contra Taylor de orden 20 en BigFloat de 256 bits:")
+for h in (0.001, 0.01, 0.032)
+    d = discretize_zoh(ss3.A, ss3.B, h)
+    expo, integ = taylor_zoh(ss3.A, h)
+    @printf("    h = %5.1f ms   err(Ad) = %.2e   err(Bd) = %.2e\n", 1000h,
+            Float64(maximum(abs.(BigFloat.(d.Ad) .- expo))),
+            Float64(maximum(abs.(BigFloat.(d.Bd) .- integ * BigFloat.(ss3.B)))))
+end
+@printf("    a modo de referencia, eps de maquina = %.2e\n", eps(Float64))
+
 println("\n  Subconjuntos de sensores de la Configuracion III:")
 tabla = sensor_subset_analysis(ss3.A, ss3.C, ["pos", "th1", "th2", "th3"])
 for f in tabla
@@ -402,4 +442,4 @@ for f in tabla
             f.observable ? "SI" : "NO", f.margin_normalized)
 end
 
-println("\nFiguras del informe de la segunda entrega guardadas en Entrega_2/resumen_tecnico/figs/")
+println("\nFiguras del informe de la segunda entrega guardadas en Entrega_2/informe_tecnico/figs/")

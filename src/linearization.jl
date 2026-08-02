@@ -226,7 +226,7 @@ function linearize_system_nlink(params)
     g = params.g
 
     # ---------------------------------------------------------------
-    # Agrupaciones de parametros (ver docs/Entrega_2/plan_de_trabajo.md, seccion 2.3)
+    # Agrupaciones de parametros (informe tecnico de la 2.a entrega, seccion 2.2)
     #   beta_j = momento estatico del eslabon j y de lo que carga encima
     #   J_j    = inercia efectiva respecto a su articulacion
     #   Gam_jk = acoplamiento inercial entre los eslabones j y k

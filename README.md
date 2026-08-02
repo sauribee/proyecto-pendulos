@@ -81,12 +81,10 @@ proyecto-pendulos/
 │   └── 03_exploracion_triple.jl  Configuracion III + metricas, observador y barridos
 ├── figures/                      Salidas de los pipelines (ignorada por git)
 └── docs/
-    ├── guia_maestra.md             Documento maestro (teoria + codigo + defensa);
-    │                               secciones 1-14 = primera entrega, seccion 15 = segunda
     ├── Entrega_1/                  PRIMERA ENTREGA (Configuraciones I y II)
-    │   ├── resumen_tecnico/
-    │   │   ├── resumen_tecnico.tex
-    │   │   ├── resumen_tecnico.pdf
+    │   ├── informe_tecnico/
+    │   │   ├── informe_tecnico.tex
+    │   │   ├── informe_tecnico.pdf
     │   │   ├── make_report_figs.jl
     │   │   └── figs/
     │   ├── resumen_ejecutivo/
@@ -98,10 +96,9 @@ proyecto-pendulos/
     │       ├── make_slide_figs.jl
     │       └── figs/
     └── Entrega_2/                  SEGUNDA ENTREGA (Configuracion III y analisis)
-        ├── plan_de_trabajo.md      Plan y metas de verificacion de esta entrega
-        ├── resumen_tecnico/
-        │   ├── resumen_tecnico.tex
-        │   ├── resumen_tecnico.pdf
+        ├── informe_tecnico/
+        │   ├── informe_tecnico.tex
+        │   ├── informe_tecnico.pdf
         │   ├── make_report_figs.jl
         │   └── figs/
         ├── resumen_ejecutivo/
@@ -115,10 +112,9 @@ proyecto-pendulos/
 
 Cada entrega es autocontenida: su informe técnico, su resumen ejecutivo y sus
 figuras viven bajo la misma carpeta. Dentro de una entrega, los documentos se
-referencian entre sí con rutas cortas (`../resumen_tecnico/figs/`,
+referencian entre sí con rutas cortas (`../informe_tecnico/figs/`,
 `../atlas/figs/`) mediante `\graphicspath`, de modo que ninguna figura se
-duplica y ningún cálculo se repite. La guía maestra queda en la raíz de `docs/`
-porque cubre las dos entregas.
+duplica y ningún cálculo se repite.
 
 ### El diseño del código
 
@@ -303,12 +299,12 @@ de cada configuración:
 
 | | Simple (LQR) | Simple (Ackermann) | Doble | Triple |
 |---|---|---|---|---|
-| $t_s$ [s] | 1.45 | 1.54 | 1.75–1.77 | 1.84–1.87 |
+| $t_s$ [s] | 1.45 | 1.54 | 1.75–1.77 | 1.84–1.88 |
 | $\max\lvert u\rvert$ [N] | 6.8 | 5.9 | 4.2 | 7.29 |
 | Excursión del carro [m] | 0.33 | — | 0.43 | 0.47 |
 
 Las tres configuraciones reproducen los valores de los informes técnicos
-(`docs/Entrega_*/resumen_tecnico/`) y están blindadas por `test/runtests.jl`.
+(`docs/Entrega_*/informe_tecnico/`) y están blindadas por `test/runtests.jl`.
 
 ### Comparativa de las tres configuraciones
 
@@ -361,9 +357,9 @@ $$\mu_{\text{PBH}}=\min_{\lambda\in\sigma(A)}\ \sigma_{\min}\big[\,A-\lambda I \
 que por el **teorema de Eckart–Young** es exactamente la distancia en norma 2 al
 conjunto de matrices de rango deficiente: mide *cuánto habría que perturbar el
 sistema para volverlo incontrolable*. A diferencia de
-$\operatorname{cond}\mathcal{C}$, que estalla catorce órdenes de magnitud, el
-margen PBH decae apenas dos órdenes y medio y sigue siendo utilizable para
-comparar y para barrer.
+$\operatorname{cond}\mathcal{C}$, que estalla casi quince órdenes de magnitud,
+el margen PBH decae poco más de dos órdenes —un factor 145— y sigue siendo
+utilizable para comparar y para barrer.
 
 ## Observador de estado y dualidad
 
@@ -388,8 +384,9 @@ $$\begin{pmatrix}A - BK & BK\\ 0 & A - LC\end{pmatrix}
 
 así que controlador y observador se diseñan por separado. Verificado
 numéricamente en las tres configuraciones: el error máximo al emparejar
-espectros es $1.1\times10^{-14}$ (simple), $5.2\times10^{-13}$ (doble) y
-$3.4\times10^{-12}$ (triple).
+espectros es del orden de $10^{-14}$ (simple) y $10^{-13}$ (doble), y de
+$3.4\times10^{-12}$ en el triple, que es el peor de los tres y el que cita el
+informe.
 
 **¿Qué sensores hacen falta?** De los $2^4-1 = 15$ subconjuntos de
 $\{x, \theta_1, \theta_2, \theta_3\}$ en la Configuración III:
@@ -479,18 +476,15 @@ configuración sin decir antes qué se optimiza.
 
 | Documento | Ruta | Páginas |
 |---|---|---|
-| Informe técnico, 1.ª entrega | `docs/Entrega_1/resumen_tecnico/` | 20 |
+| Informe técnico, 1.ª entrega | `docs/Entrega_1/informe_tecnico/` | 20 |
 | Resumen ejecutivo, 1.ª entrega | `docs/Entrega_1/resumen_ejecutivo/` | 3 |
 | Presentación (Beamer 16:9, 20 min) | `docs/Entrega_1/presentacion/` | 35 |
-| Informe técnico, 2.ª entrega | `docs/Entrega_2/resumen_tecnico/` | 19 |
+| Informe técnico, 2.ª entrega | `docs/Entrega_2/informe_tecnico/` | 19 |
 | Resumen ejecutivo, 2.ª entrega | `docs/Entrega_2/resumen_ejecutivo/` | 4 |
-| Guía maestra (teoría + código + defensa) | `docs/guia_maestra.md` | — |
-| Plan de trabajo de la 2.ª entrega | `docs/Entrega_2/plan_de_trabajo.md` | — |
 
-La **guía maestra** es el documento de referencia para preparar la defensa: sus
-secciones 1 a 14 desarrollan la primera entrega (y son las que sostienen la
-presentación oral), y la sección 15 resume qué añadió la segunda, remitiendo al
-informe técnico correspondiente.
+Cada entrega se documenta por completo en su informe técnico. El resumen
+ejecutivo de cada una sirve de guía de lectura y remite, sección por sección, al
+informe correspondiente.
 
 ## Regenerar figuras y compilar los PDFs
 
@@ -500,10 +494,10 @@ en el texto.
 
 ```bash
 # Figuras del informe de la primera entrega
-julia --project=. docs/Entrega_1/resumen_tecnico/make_report_figs.jl
+julia --project=. docs/Entrega_1/informe_tecnico/make_report_figs.jl
 
 # Figuras del informe de la segunda entrega
-julia --project=. -t auto docs/Entrega_2/resumen_tecnico/make_report_figs.jl
+julia --project=. -t auto docs/Entrega_2/informe_tecnico/make_report_figs.jl
 
 # Mapas del atlas de operabilidad
 julia --project=. -t auto docs/Entrega_2/atlas/make_atlas_figs.jl
@@ -520,10 +514,10 @@ Cada documento se compila **desde su propia carpeta**, porque las rutas de las
 figuras son relativas. Las `.png` deben existir antes de compilar:
 
 ```bash
-cd docs/Entrega_1/resumen_tecnico    && latexmk -pdf resumen_tecnico.tex
+cd docs/Entrega_1/informe_tecnico    && latexmk -pdf informe_tecnico.tex
 cd ../resumen_ejecutivo              && latexmk -pdf resumen_ejecutivo.tex
 cd ../presentacion                   && latexmk -pdf presentacion.tex
-cd ../../Entrega_2/resumen_tecnico   && latexmk -pdf resumen_tecnico.tex
+cd ../../Entrega_2/informe_tecnico   && latexmk -pdf informe_tecnico.tex
 cd ../resumen_ejecutivo              && latexmk -pdf resumen_ejecutivo.tex
 ```
 
@@ -533,8 +527,9 @@ cd ../resumen_ejecutivo              && latexmk -pdf resumen_ejecutivo.tex
 julia --project=. -t auto test/runtests.jl
 ```
 
-Son **618 pruebas** en ocho conjuntos (unos 90 s tras precompilar). Verifican de
-forma reproducible lo que antes solo se había comprobado a mano:
+Son **618 pruebas** en ocho conjuntos (unos 45 s con `-t auto` tras
+precompilar). Verifican de forma reproducible lo que antes solo se había
+comprobado a mano:
 
 1. **Modelos** — el modelo genérico de $N$ eslabones reproduce las
    Configuraciones I y II, que son implementaciones **independientes** de la

@@ -1,17 +1,17 @@
 # =============================================================================
 # make_report_figs.jl -- Genera las figuras de respuesta temporal del informe
 # =============================================================================
-# Produce, en Entrega_1/resumen_tecnico/figs/, las graficas que se incluyen en
+# Produce, en Entrega_1/informe_tecnico/figs/, las graficas que se incluyen en
 # el .tex, y reporta metricas (tiempo de asentamiento, esfuerzo de control pico)
 # que se citan en la discusion de resultados. Usa CairoMakie (salida estatica).
 #
 # Ejecutar desde la carpeta del proyecto:
-#   julia --project=. docs/Entrega_1/resumen_tecnico/make_report_figs.jl
+#   julia --project=. docs/Entrega_1/informe_tecnico/make_report_figs.jl
 # =============================================================================
 
 using Pkg
-# Este script vive en docs/Entrega_1/resumen_tecnico/; la raiz del proyecto esta
-# tres niveles arriba (resumen_tecnico -> Entrega_1 -> docs -> raiz).
+# Este script vive en docs/Entrega_1/informe_tecnico/; la raiz del proyecto esta
+# tres niveles arriba (informe_tecnico -> Entrega_1 -> docs -> raiz).
 const PROJ_ROOT = normpath(joinpath(@__DIR__, "..", "..", ".."))
 Pkg.activate(PROJ_ROOT)
 
@@ -166,5 +166,5 @@ println("== METRICAS DOBLE (umbral |theta|<0.02 rad) ==")
         settling_time(soll_d.t, th1_l), settling_time(soll_d.t, th2_l),
         maximum(abs.(u_l)), maximum(abs.(x_l)))
 
-println("== Figuras guardadas en resumen_tecnico/figs/ ==")
+println("== Figuras guardadas en informe_tecnico/figs/ ==")
 foreach(println, readdir(FIGS))

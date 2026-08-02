@@ -125,6 +125,9 @@
 \newcommand{\Mm}{\bm{M}}
 \newcommand{\Gm}{\bm{G}}
 \newcommand{\Fm}{\bm{F}}
+% La matriz de amortiguamiento se denota D y no F: F ya designa la matriz de
+% entrada en la forma mecanica estandar M(q) qdd + C qd + G = F u.
+\newcommand{\Dm}{\bm{D}}
 
 % ── cleveref en español ─────────────────────────────────────
 \crefname{equation}{ec.}{ecs.}\Crefname{equation}{Ecuación}{Ecuaciones}
@@ -149,8 +152,7 @@
 % ── Portada ─────────────────────────────────────────────────
 \begin{center}
     {\footnotesize\bfseries\color{acento2} INFORME TÉCNICO --- SEGUNDA ENTREGA}\\[0.4em]
-    {\LARGE\bfseries Cuándo el Álgebra Lineal Deja de Bastar \\[0.2em]
-     y qué la Reemplaza}\\[0.5em]
+    {\LARGE\bfseries El Límite No Es Teórico, Es Numérico}\\[0.5em]
     {\large Péndulo Triple, Márgenes de Controlabilidad, \\ Fronteras de Operabilidad y Estimación de Estado}\\[1.2em]
     {\normalsize Mateo Bedoya Rojas \quad\textbullet\quad Camilo Alejandro Patiño Osorio \quad\textbullet\quad Santiago Uribe Echavarría}\\[0.5em]
     {\footnotesize
@@ -172,7 +174,7 @@ son casos particulares y en la que la Configuración III ---el péndulo triple,
 con estado en $\R^8$--- es el siguiente término. Segundo, se muestra
 experimentalmente que el criterio de rango de Kalman, siendo un teorema
 correcto, es un mal algoritmo: el condicionamiento de $\calC$ crece unos cuatro
-órdenes de magnitud por eslabón y con cinco alcanza $1/\varepsilon_{\text{máq}}$.
+órdenes de magnitud por eslabón y con cinco rebasa $1/\varepsilon_{\text{máq}}$.
 Se lo sustituye por el \emph{margen de Popov--Belevitch--Hautus}, que por el
 teorema de Eckart--Young mide la distancia en norma 2 a la incontrolabilidad y
 decae suavemente. Tercero, se construye un \emph{atlas de operabilidad} que
@@ -207,8 +209,8 @@ completa
 \to \spec(A),\ \rank\calC,\ \rank\calO \to K \to \text{simulación}.
 \end{gathered}
 \]
-El resultado fue sólido, pero un lector crítico podía señalar cinco huecos. Esta
-entrega los ataca uno por uno.
+El resultado fue sólido, pero un lector crítico podía señalar cinco huecos de
+fondo. Esta segunda entrega los ataca uno por uno.
 
 \begin{enumerate}
   \item \textbf{La observabilidad se analizaba y no se usaba.} Se demostraba
@@ -236,15 +238,16 @@ entrega los ataca uno por uno.
 \begin{clave}
 \small
 \textbf{La tesis de esta entrega.} El álgebra lineal que resuelve el problema
-escala sin cambios conceptuales al crecer el número de eslabones, pero
-\emph{el condicionamiento no}. Llega un punto en que los teoremas siguen siendo
-ciertos y los algoritmos que los implementan dejan de ser confiables. La
+escala sin grandes cambios conceptuales al crecer el número de eslabones de la
+cadena, y con él la dimensión del estado y el grado de subactuación; pero
+\emph{el condicionamiento no}. Llega un punto en que los teoremas siguen
+siendo ciertos y los algoritmos que los implementan dejan de ser confiables. La
 respuesta no es cambiar de teoría sino de herramienta: sustituir criterios
 binarios de rango por medidas continuas basadas en valores singulares.
 \end{clave}
 
 % ============================================================
-\section{Formalización genérica en $N$ eslabones}
+\section{Formalización genérica para un número arbitrario de eslabones}
 \label{sec:generico}
 
 En vez de deducir una tercera configuración desde cero, se reformula el problema
@@ -284,9 +287,9 @@ puntual en el extremo, $a_j=\ell_j$ e $I_j=0$.
 Al expandir las energías cinética y potencial aparecen tres agrupaciones de
 parámetros que estructuran todo el desarrollo. Para $j=1,\dots,N$:
 \begin{equation}
-\boxed{\ \beta_j=m_ja_j+\ell_j\!\!\sum_{i>j}m_i\ },\qquad
-\boxed{\ J_j=I_j+m_ja_j^2+\ell_j^2\!\!\sum_{i>j}m_i\ },\qquad
-\boxed{\ \Gamma_{jk}=\ell_{\min(j,k)}\,\beta_{\max(j,k)}\ }
+\boxed{\ \beta_j=m_ja_j+\ell_j\sum_{i>j}m_i\ },\qquad
+\boxed{\ J_j=I_j+m_ja_j^2+\ell_j^2\sum_{i>j}m_i\ },\qquad
+\boxed{\ \Gamma_{jk}=\ell_{\min(j,k)}\beta_{\max(j,k)}\ }
 \label{eq:agrupaciones}
 \end{equation}
 
@@ -425,13 +428,13 @@ $\sin\theta_j\to\theta_j$, $\cos(\theta_j-\theta_k)\to1$, y los términos
 cuadráticos en las velocidades desaparecen por ser de segundo orden. Lo que
 queda es un sistema lineal con \emph{matriz de masa constante}:
 \begin{equation}
-\Mm_0\,\ddot q=\Gm_0\,q-\Fm_0\,\dot q+\bm{e}_1u,
+\Mm_0\,\ddot q=\Gm_0\,q-\Dm_0\,\dot q+\bm{e}_1u,
 \label{eq:linealizado}
 \end{equation}
-con $\Mm_0=\Mm(0)$, $\Gm_0=g\diag(0,\beta_1,\dots,\beta_N)$ y $\Fm_0$ la matriz
+con $\Mm_0=\Mm(0)$, $\Gm_0=g\diag(0,\beta_1,\dots,\beta_N)$ y $\Dm_0$ la matriz
 de fricción. Despejando se obtienen los tres bloques
 \[
-A_{cc}=\Mm_0^{-1}\Gm_0,\qquad A_{cv}=-\Mm_0^{-1}\Fm_0,\qquad
+A_{cc}=\Mm_0^{-1}\Gm_0,\qquad A_{cv}=-\Mm_0^{-1}\Dm_0,\qquad
 B_c=\Mm_0^{-1}\bm{e}_1,
 \]
 que se ensamblan directamente en el orden intercalado. En orden por bloques la
@@ -441,7 +444,7 @@ ensambla la versión intercalada por coherencia con las otras configuraciones.
 
 \begin{proposicion}[Estructura del espectro sin fricción]
 \label{prop:espectro}
-Si $\Fm_0=0$, los eigenvalores de $A$ vienen en pares $\pm\lambda$ más un cero
+Si $\Dm_0=0$, los eigenvalores de $A$ vienen en pares $\pm\lambda$ más un cero
 doble:
 \[
 \spec(A)=\{\pm\lambda_1,\dots,\pm\lambda_N,\ 0,\ 0\},
@@ -451,7 +454,7 @@ de modo que hay exactamente $N$ modos inestables.
 
 \begin{proof}
 Buscando soluciones de la forma $q(t)=v\,e^{\lambda t}$ en
-\cref{eq:linealizado} con $\Fm_0=0$ y $u=0$ se obtiene el problema generalizado
+\cref{eq:linealizado} con $\Dm_0=0$ y $u=0$ se obtiene el problema generalizado
 de eigenvalores $\Gm_0 v=\lambda^2\Mm_0 v$. Por tanto los eigenvalores de $A$
 son las \emph{raíces cuadradas} de los de $\Mm_0^{-1}\Gm_0$, y aparecen en pares
 $\pm\lambda$. Como $\Gm_0$ tiene una fila y una columna nulas ---el carro no
@@ -502,7 +505,7 @@ reflejan al semiplano izquierdo y los estables se conservan.
   \caption{Configuración~III en lazo cerrado, desde $\theta_j=0.10$~rad en los
   tres eslabones. Arriba a la derecha, la respuesta libre: el triple sin control
   da varias vueltas completas en tres segundos. Los tiempos de asentamiento son
-  1.84, 1.86 y 1.87~s con un pico de fuerza de 7.29~N.}
+  1.84, 1.86 y 1.88~s con un pico de fuerza de 7.29~N.}
   \label{fig:tripleresp}
 \end{figure}
 
@@ -557,7 +560,8 @@ contra $N$ de forma limpia, se obtiene la \cref{tab:degradacion}.
 
 \begin{alerta}
 \small
-\textbf{Con $N=5$ el condicionamiento alcanza $1/\varepsilon_{\text{máq}}$.} En
+\textbf{Con $N=5$ el condicionamiento rebasa siete veces
+$1/\varepsilon_{\text{máq}}$.} En
 ese punto el rango numérico de $\calC$ es \emph{ruido}: la respuesta que da el
 computador no depende ya de la matemática del problema sino del redondeo. Y sin
 embargo el sistema \emph{sigue siendo} controlable en aritmética exacta. Esta
@@ -568,10 +572,10 @@ siendo un teorema correcto, es un mal algoritmo.
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\linewidth]{degradacion_N.png}
-  \caption{Izquierda: el condicionamiento de la matriz de Kalman crece catorce
-  órdenes de magnitud entre $N=1$ y $N=5$, cruzando el umbral de
-  $1/\varepsilon_{\text{máq}}$. Derecha: el margen PBH decae suavemente, apenas
-  dos órdenes y medio, y sigue siendo utilizable.}
+  \caption{Izquierda: el condicionamiento de la matriz de Kalman crece casi
+  quince órdenes de magnitud entre $N=1$ y $N=5$, cruzando el umbral de
+  $1/\varepsilon_{\text{máq}}$. Derecha: el margen PBH decae suavemente, poco
+  más de dos órdenes ---un factor $145$---, y sigue siendo utilizable.}
   \label{fig:degradacion}
 \end{figure}
 
@@ -679,10 +683,11 @@ de modo que $A_d$ y $B_d$ se leen directamente de los bloques superiores. Esto
 evita integrar numéricamente y evita invertir $A$, que aquí sería singular
 porque el carro aporta un eigenvalor nulo. La exponencial la evalúa la
 biblioteca por escalamiento y cuadratura con aproximantes de
-Padé~\cite[Alg.~9.3.1]{golub2013}; la implementación reproduce $e^{Ah}$ y la
-integral a precisión de máquina: el error contra una serie de Taylor de orden 20
-en aritmética de precisión extendida es $0$ en $A_d$ y $3.5\times10^{-18}$ en
-$B_d$.
+Padé~\cite[Alg.~9.3.1]{golub2013}. La implementación reproduce $e^{Ah}$ y la
+integral a precisión de máquina: contra una serie de Taylor de orden 20 evaluada
+con 256 bits, la mayor discrepancia en la Configuración~III con $h=10$~ms es de
+$7.7\times10^{-16}$ en $A_d$ y $3.0\times10^{-18}$ en $B_d$, del orden del
+redondeo de la doble precisión y no un error del método.
 
 La condición de estabilidad en tiempo discreto es que $A_d-B_dK$ sea de
 \emph{Schur}, es decir que todos sus eigenvalores estén dentro del círculo
@@ -754,7 +759,7 @@ La \cref{fig:atlasb} concentra tres resultados:
 
 \begin{enumerate}
   \item \textbf{La cota elipsoidal es conservadora y válida ---hasta cierto
-  punto.} Para $u_{\max}\le85$~N queda por dentro de la frontera numérica, como
+  punto.} Para $u_{\max}<85$~N queda por dentro de la frontera numérica, como
   debe ser. Con $u_{\max}=50$~N garantiza $0.152$~rad frente a los $0.230$~rad
   reales: un $66\%$ de la frontera.
 
@@ -908,7 +913,7 @@ Luenberger~\cite{ogata2010,chen1999}
 \]
 y el error $\ev=\xv-\hat\xv$ obedece $\dot\ev=(A-LC)\ev$. Diseñar $L$ para que
 $A-LC$ sea Hurwitz es el \emph{problema dual} de diseñar $K$: por la dualidad de
-Kalman, $(A,B)$ controlable $\iff$ $(A^\top,B^\top)$ observable, de modo que
+Kalman, $(A,C)$ observable $\iff$ $(A^\top,C^\top)$ controlable, de modo que
 \begin{equation}
 L=\operatorname{lqr}\!\big(A^\top,\ C^\top,\ Q_o,\ R_o\big)^{\!\top}
 \label{eq:dualidad}
@@ -1029,8 +1034,9 @@ recupera; desde $0.1500$~rad ya no.
 \textbf{Consecuencia práctica.} La condición inicial nominal de este informe
 ---los tres eslabones a $0.10$~rad--- está \emph{dentro} de la región de
 atracción con estado completo ($0.3018$~rad) y \emph{fuera} de la del lazo con
-observador ($0.0743$~rad): con estado completo converge en 1.85~s, con
-observador diverge. Es un recordatorio de que el principio de separación es un
+observador ($0.0743$~rad): con estado completo los tres ángulos se asientan en
+1.88~s, con observador diverge. Es un recordatorio de que el principio de
+separación es un
 teorema sobre el sistema linealizado, y de que un diseño que solo se valide en
 ese marco puede fallar en la planta real.
 \end{alerta}
@@ -1161,7 +1167,7 @@ medición desmintió. Registrarlas es parte del resultado.
   misma cautela se aplica, atenuada, al valor nuevo: $0.126$ es el nodo de la
   malla logarítmica de 60 puntos del atlas, y refinando a 2001 puntos el máximo
   se sitúa en $0.127$~kg. La diferencia es inmaterial ---el margen cambia un
-  $0.24\%$--- pero conviene decirlo: un óptimo leído de una malla siempre hereda
+  $0.22\%$--- pero conviene decirlo: un óptimo leído de una malla siempre hereda
   su resolución.
 
   \item \textbf{$\|K\|$ apenas depende de $R$.} Se esperaba un compromiso
@@ -1187,8 +1193,9 @@ medición desmintió. Registrarlas es parte del resultado.
   coincidencia exacta en el caso $N=2$.
 
   \item \textbf{El álgebra escala; el condicionamiento no.} Los teoremas siguen
-  valiendo para cualquier $N$, pero $\operatorname{cond}\calC$ crece cuatro
-  órdenes por eslabón y con cinco alcanza el límite de la aritmética de máquina.
+  valiendo para cualquier $N$, pero $\operatorname{cond}\calC$ crece cerca de
+  cuatro órdenes por eslabón ---cada vez más--- y con cinco rebasa el límite de
+  la aritmética de máquina.
   La respuesta correcta no es cambiar de teoría sino de herramienta: el margen
   PBH, apoyado en Eckart--Young, sustituye a un criterio binario por una medida
   continua que decae suavemente y sí sirve para comparar y para barrer.
@@ -1274,7 +1281,7 @@ este informe se ejecuta, desde la raíz del proyecto y anteponiendo
 \toprule
 \texttt{main\_triple.jl} & pipeline y figuras del triple\\
 \texttt{-t auto docs/Entrega\_2/atlas/make\_atlas\_figs.jl} & atlas\\
-\texttt{-t auto docs/Entrega\_2/resumen\_tecnico/make\_report\_figs.jl} & figuras del informe\\
+\texttt{-t auto docs/Entrega\_2/informe\_tecnico/make\_report\_figs.jl} & figuras del informe\\
 \texttt{test/runtests.jl} & pruebas\\
 \bottomrule
 \end{tabular}
@@ -1284,6 +1291,10 @@ este informe se ejecuta, desde la raíz del proyecto y anteponiendo
 % Ordenadas alfabéticamente por apellido del primer autor.
 \begin{thebibliography}{11}
 \small
+% Las once entradas caben en la ultima pagina del cuerpo si se aprieta el
+% espaciado entre items; sin esto la bibliografia se derrama a una pagina
+% adicional que solo lleva dos referencias.
+\setlength{\itemsep}{0pt}\setlength{\parsep}{0pt}
 \bibitem{entrega1}
 M.~Bedoya, C.~Patiño y S.~Uribe, \emph{Análisis del Péndulo Invertido sobre un
 Carro mediante Álgebra Lineal Aplicada --- Informe Técnico (primera entrega)}.
