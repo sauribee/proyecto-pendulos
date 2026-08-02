@@ -302,6 +302,60 @@ println("  El principio de separacion garantiza estabilidad del sistema LINEAL;"
 println("  no dice nada sobre la region de atraccion del no lineal, que se")
 println("  encoge notablemente al estimar en vez de medir.")
 
+# ---------------------------------------------------------------------------
+# POR QUE se encoge: la comparacion tiene que ser PAREADA
+# ---------------------------------------------------------------------------
+# OJO: comparar el pico de fuerza del lazo con observador contra el del lazo con
+# estado completo SOLO tiene sentido desde la MISMA condicion inicial. Mezclar
+# la CI de tres angulos (donde los terminos de K se cancelan y el pico baja a
+# 7.29 N) con la de un angulo lleva a concluir que el observador dispara la
+# fuerza, que es justo lo contrario de lo que pasa: el estimador arranca en
+# cero, luego u(0) = 0, y el pico resulta MENOR. Lo que crece es la EXCURSION.
+
+"Pico de fuerza y excursion angular maxima, con estado completo."
+function full_metrics(theta0; n_ang=1, T=10.0)
+    x0 = zeros(8)
+    for j in 1:n_ang
+        x0[2j+1] = theta0
+    end
+    s = solve(ODEProblem(closed_loop_eom_nlink!, x0, (0.0, T),
+                         (params=p3, K=K3, saturate=SAT)), Tsit5(), saveat=0.002)
+    u = [clamp(-dot(K3[1, :], v), -SAT, SAT) for v in s.u]
+    return (pico=maximum(abs.(u)),
+            exc=maximum(maximum(abs(v[j]) for j in 3:2:7) for v in s.u))
+end
+
+"Idem con observador arrancando en cero."
+function obs_metrics(theta0; n_ang=1, T=10.0)
+    z0 = zeros(16)
+    for j in 1:n_ang
+        z0[2j+1] = theta0
+    end
+    s = solve(ODEProblem(observer_eom!, z0, (0.0, T), P_OBS), Tsit5(), saveat=0.002)
+    u = [clamp(-dot(K3[1, :], v[9:16]), -SAT, SAT) for v in s.u]
+    return (pico=maximum(abs.(u)),
+            exc=maximum(maximum(abs(v[j]) for j in 3:2:7) for v in s.u))
+end
+
+println("\n  Comparacion PAREADA (misma condicion inicial en ambas ramas):")
+@printf("  %-24s %9s %9s %9s %9s %8s\n", "condicion inicial",
+        "pico[N]", "pico_o[N]", "exc[rad]", "exc_o[rad]", "factor")
+for (n_ang, th) in [(1, 0.10), (1, 0.1452), (2, 0.0450), (3, 0.0743)]
+    f = full_metrics(th; n_ang=n_ang)
+    o = obs_metrics(th; n_ang=n_ang)
+    @printf("  %-24s %9.2f %9.2f %9.4f %9.4f %8.2f\n",
+            "$(n_ang) angulo(s) a $(th)", f.pico, o.pico, f.exc, o.exc,
+            o.exc / f.exc)
+end
+@printf("\n  u(0) con estado completo = -K[3]*0.10 = %.2f N ; con observador = 0\n",
+        -K3[1, 3] * 0.10)
+i_1 = findfirst(e -> e < 0.01 * err[1], err)
+@printf("  el error de estimacion cae al 1%% en t = %.2f s\n",
+        i_1 === nothing ? NaN : sol_obs.t[i_1])
+println("  El observador NO dispara la fuerza: la baja. Lo que dispara es la")
+println("  excursion angular, y es eso lo que saca a la planta del regimen")
+println("  donde la linealizacion vale.")
+
 # =============================================================================
 # TABLA COMPARATIVA que se cita en el informe
 # =============================================================================

@@ -259,11 +259,18 @@ axislegend(ax_b, position=:rb)
 save(joinpath(FIG_DIR, "atlas_b.png"), fig_b, px_per_unit=2)
 println("  Guardada: atlas_b.png")
 
-i_sat = findfirst(i -> i > 1 && frontera[i] <= frontera[i-1] + 1e-6,
-                  eachindex(frontera))
+# El plateau empieza en el PRIMER punto que ya alcanza el maximo de la
+# frontera, no en el primer escalon plano. La frontera es una escalera
+# discretizada (el paso en theta es de unos 0.009 rad), asi que hay empates
+# entre puntos consecutivos mucho antes de que la curva deje de crecer:
+# buscar el primer empate da un u_max muy por debajo del real.
+f_max = maximum(filter(!isnan, frontera))
+i_sat = findfirst(f -> !isnan(f) && f >= f_max - 1e-9, frontera)
 if i_sat !== nothing
-    @printf("  la frontera se estanca a partir de u_max = %.0f N (theta = %.4f):\n",
+    @printf("  la frontera se estanca a partir de u_max = %.0f N (theta = %.4f)\n",
             xs_b[i_sat], frontera[i_sat])
+    @printf("  y se mantiene plana hasta el final del barrido (%.0f N)\n",
+            xs_b[end])
     println("  mas actuador ya no compra mas angulo, porque la restriccion")
     println("  activa deja de ser el motor y pasa a ser la no linealidad")
 end
@@ -366,7 +373,7 @@ Rs = collect(10 .^ range(-3, 1, length=40))
 thetas_d = collect(range(0.01, 0.32, length=45))
 
 # Se barre R para DOS limites de actuador. La razon es el hallazgo del mapa B:
-# por encima de unos 53 N la saturacion deja de ser la restriccion activa, y
+# por encima de unos 73 N la saturacion deja de ser la restriccion activa, y
 # entonces el peso del control no puede influir en el angulo recuperable. El
 # compromiso agresividad-robustez solo EXISTE cuando el actuador es el cuello
 # de botella; con un panel solo, a 150 N, la grafica saldria plana y el

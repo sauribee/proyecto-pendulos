@@ -202,8 +202,10 @@ principio de separación, exponencial matricial, retenedor de orden cero.
 La primera entrega~\cite{entrega1} recorrió, para dos configuraciones, la cadena
 completa
 \[
-\text{Euler--Lagrange} \to \Mm(q)\ddot q=\text{rhs} \to \text{linealización}
-\to (A,B,C) \to \spec(A),\ \rank\calC,\ \rank\calO \to K \to \text{simulación}.
+\begin{gathered}
+\text{Euler--Lagrange} \to \Mm(q)\ddot q=\text{rhs} \to \text{linealización} \to (A,B,C)\\
+\to \spec(A),\ \rank\calC,\ \rank\calO \to K \to \text{simulación}.
+\end{gathered}
 \]
 El resultado fue sólido, pero un lector crítico podía señalar cinco huecos. Esta
 entrega los ataca uno por uno.
@@ -476,9 +478,9 @@ por la \cref{prop:espectro}. El modo dominante $\lambda_{\max}=18.06$~s$^{-1}$
 implica una constante de tiempo de caída de $1/\lambda_{\max}=55$~ms: el sistema
 se desploma \emph{cuatro veces más rápido} que la Configuración~I.
 
-Los rangos de Kalman son plenos, $\rank\calC=\rank\calO=8$, y el LQR con
+Los rangos de Kalman son plenos: $\rank\calC=\rank\calO=8$. Con
 $Q=\diag(1,0,10,0,10,0,10,0)$ y $R=0.1$ ---los mismos pesos de las otras dos
-configuraciones, extendidos--- da
+configuraciones, extendidos--- el LQR da
 \[
 K=(-3.16,\ -6.17,\ -317.43,\ -4.37,\ 911.95,\ 37.73,\ -667.37,\ -61.42),
 \qquad \|K\|_2=1176.0,
@@ -521,7 +523,8 @@ reflejan al semiplano izquierdo y los estables se conservan.
 \subsection{El problema}
 
 El criterio de Kalman afirma que $(A,B)$ es controlable si y solo si
-$\rank\calC=n$ para $\calC=[B\ \ AB\ \cdots\ A^{n-1}B]$. Es un teorema correcto.
+$\rank\calC=n$, donde $\calC$ es la matriz de controlabilidad
+$[B\ \ AB\ \cdots\ A^{n-1}B]$. Es un teorema correcto.
 El problema es que $\calC$ es una \emph{base de Krylov}, notoriamente mal
 condicionada~\cite{golub2013}: sus columnas tienden a alinearse con el
 eigenvector dominante de $A$ a medida que crece la potencia. El número de
@@ -762,9 +765,14 @@ La \cref{fig:atlasb} concentra tres resultados:
   \emph{lineal}, y una vez que la saturación deja de ser la restricción activa,
   lo que limita es la no linealidad, sobre la que $c^\star$ no dice nada.
 
-  \item \textbf{Más actuador deja de comprar ángulo a partir de unos 53~N.} La
-  frontera se aplana en $0.253$~rad. Comprar un motor más grande no mejora la
-  región de operación.
+  \item \textbf{Más actuador deja de comprar ángulo a partir de unos 73~N.} La
+  frontera crece hasta $0.252$~rad y desde ahí se mantiene plana en todo el
+  resto del barrido, hasta 200~N. Pasado ese punto, comprar un motor más grande
+  no amplía la región de operación: la restricción activa ha dejado de ser el
+  actuador. Nótese que ocurre \emph{antes} del cruce del punto anterior, y en
+  ese orden: primero la saturación deja de mandar (73~N) y solo después la cota
+  elipsoidal ---que sigue creciendo linealmente--- alcanza y rebasa a la
+  frontera (85~N).
 \end{enumerate}
 
 \subsection{Cuál restricción está activa}
@@ -982,12 +990,39 @@ cero, contra el mismo cálculo con estado completo:
   \end{tabular}
 \end{table}
 
-La caída es sustancial: entre la mitad y la cuarta parte. El mecanismo es claro
-en la simulación: durante los primeros instantes el controlador actúa sobre una
-estimación equivocada ---el pico de fuerza sube de 7.3~N a 26~N--- y ese esfuerzo
-mal dirigido saca a la planta del régimen en que la linealización es válida. Una
-vez fuera, el observador lineal ya no describe bien la planta y el error deja de
-converger.
+\begin{observacion}[Por qué la columna de estado completo no es monótona]
+Desviar \emph{tres} ángulos ($0.3018$~rad) resulta más benigno que desviar
+\emph{uno} ($0.2605$) y mucho más que desviar \emph{dos} ($0.1419$). No es un
+error de medida sino geometría: con los tres eslabones inclinados por igual, la
+cadena se comporta como una única barra rígida y el problema se parece al del
+péndulo simple; con dos inclinados y el tercero vertical hay un quiebre en la
+articulación superior, que es la configuración más exigente. La columna de
+ratios, en cambio, sí decae monótonamente, porque compara cada caso consigo
+mismo.
+\end{observacion}
+
+La caída es sustancial: entre la mitad y la cuarta parte. El mecanismo, medido
+sobre la simulación, resulta ser el contrario del que cabría esperar. El
+estimador arranca en cero, de modo que en $t=0$ el mando también vale cero,
+mientras que con estado completo vale $-K_3\theta_1=31.74$~N: durante el
+transitorio inicial el controlador no aplica fuerza de más sino \emph{de menos}.
+Desde la misma condición inicial su pico llega a ser \emph{menor} ---25.8~N
+frente a 31.7~N desviando un ángulo $0.10$~rad, 16.4~N frente a 26.8~N desviando
+dos $0.045$~rad---. Solo lo supera en la condición de tres ángulos iguales, que
+es precisamente aquella en la que los signos alternos de $K$ se cancelan y el
+lazo con estado completo baja a 5.4~N; el observador, que no reproduce esa
+cancelación mientras estima mal, pide 16.1~N.
+
+Lo que sí crece es la \emph{excursión}. Mientras la estimación converge ---el
+error de estimación tarda 2.95~s en caer al $1\%$ de su valor inicial--- la
+planta cae gobernada por un mando que todavía no la describe, y el ángulo máximo
+que alcanza durante el transitorio se multiplica por un factor de entre $1.1$ y
+$2.8$ según la condición inicial. Es esa sobre-excursión, y no un exceso de
+esfuerzo, la que saca a la planta del régimen en que la linealización es válida;
+una vez fuera, el observador lineal ya no la describe bien y el error deja de
+converger. El umbral se ve nítido justo en la frontera: desde
+$\theta_0=0.1452$~rad la excursión llega a $0.2211$~rad y el lazo todavía se
+recupera; desde $0.1500$~rad ya no.
 
 \begin{alerta}
 \small
@@ -1044,10 +1079,12 @@ no es lo mismo que practicable}: es justo el tipo de distinción que el criterio
 de rango, por ser binario, no puede expresar.
 \end{clave}
 
-Una consecuencia práctica: el pico de fuerza con observador es de 26~N frente a
-7.3~N con estado completo, porque durante el primer medio segundo el controlador
-actúa sobre una estimación equivocada. Al dimensionar el actuador hay que contar
-con ese transitorio.
+Conviene retener aquí una consecuencia práctica del apartado anterior: lo que el
+observador encarece no es tanto el actuador ---desde la misma condición inicial
+su pico de fuerza puede ser incluso menor que el del lazo con estado completo---
+sino el \emph{margen angular}. Al dimensionar el sistema hay que reservar espacio
+para una excursión transitoria que llega a ser $2.8$ veces la del lazo con
+medición completa.
 
 % ============================================================
 \section{Metodología y validación}
@@ -1120,7 +1157,12 @@ medición desmintió. Registrarlas es parte del resultado.
   \emph{riel}, no el motor ni la no linealidad (\cref{tab:restricciones}).
 
   \item \textbf{El óptimo de la masa del carro está en 0.126~kg}, no en 0.1~kg;
-  el valor previo provenía de una malla gruesa en la que $0.1$ era un nodo.
+  el valor previo provenía de una malla gruesa en la que $0.1$ era un nodo. La
+  misma cautela se aplica, atenuada, al valor nuevo: $0.126$ es el nodo de la
+  malla logarítmica de 60 puntos del atlas, y refinando a 2001 puntos el máximo
+  se sitúa en $0.127$~kg. La diferencia es inmaterial ---el margen cambia un
+  $0.24\%$--- pero conviene decirlo: un óptimo leído de una malla siempre hereda
+  su resolución.
 
   \item \textbf{$\|K\|$ apenas depende de $R$.} Se esperaba un compromiso
   agresividad--robustez marcado. Cuatro órdenes de magnitud en $R$ mueven
@@ -1224,15 +1266,16 @@ Módulos nuevos de esta entrega, todos genéricos en la dimensión del estado:
 \end{center}
 
 Los módulos de las Configuraciones I y II no se modificaron. Para reproducir
-este informe:
+este informe se ejecuta, desde la raíz del proyecto y anteponiendo
+\texttt{julia --project=.} a cada línea:
 
 \begin{center}\small
 \begin{tabular}{@{}ll@{}}
 \toprule
-\texttt{julia --project=. main\_triple.jl} & pipeline y figuras del triple\\
-\texttt{julia --project=. -t auto docs/segunda\_entrega/make\_atlas\_figs.jl} & atlas\\
-\texttt{julia --project=. -t auto .../entrega\_2/make\_report\_figs.jl} & figuras del informe\\
-\texttt{julia --project=. test/runtests.jl} & pruebas\\
+\texttt{main\_triple.jl} & pipeline y figuras del triple\\
+\texttt{-t auto docs/Entrega\_2/atlas/make\_atlas\_figs.jl} & atlas\\
+\texttt{-t auto docs/Entrega\_2/resumen\_tecnico/make\_report\_figs.jl} & figuras del informe\\
+\texttt{test/runtests.jl} & pruebas\\
 \bottomrule
 \end{tabular}
 \end{center}

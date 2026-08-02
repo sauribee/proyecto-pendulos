@@ -186,9 +186,10 @@ presentacion, por eso `presentacion/` cuelga de `Entrega_1/`.
 La decisión arquitectónica más importante es **separar la física (distinta en
 cada configuración) de los algoritmos de álgebra lineal (idénticos)**:
 
-- La **física** vive en `model_simple.jl` y `model_double.jl`. Cada uno tiene sus
-  propios parámetros, sus ecuaciones de movimiento no lineales y su función de
-  lazo cerrado. Son módulos distintos porque la física es distinta.
+- La **física** vive en `model_simple.jl` y `model_double.jl` (y, desde la
+  segunda entrega, en `model_nlink.jl` con su capa `model_triple.jl`). Cada uno
+  tiene sus propios parámetros, sus ecuaciones de movimiento no lineales y su
+  función de lazo cerrado. Son módulos distintos porque la física es distinta.
 - Los **algoritmos** de `linearization.jl` (excepto las dos funciones de
   linealización, que sí son específicas) y **todo** `controller.jl` son
   **genéricos en la dimensión del estado $n$**. La estructura `StateSpaceModel`
@@ -210,8 +211,8 @@ tocar una sola línea** de `Controller` ni de las funciones de análisis de
 
 ### 3.3 Flujo de datos de cada pipeline
 
-Ambos `main_*.jl` reproducen el mismo orden lógico, que es también el orden del
-informe técnico:
+Los tres `main_*.jl` reproducen el mismo orden lógico, que es también el orden
+del informe técnico:
 
 ```
 model_*.jl          linearization.jl              controller.jl            simulacion no lineal
@@ -223,7 +224,10 @@ simulación libre sin control, (3) linealización y análisis, (4) diseño LQR, 
 diseño Ackermann, (6) simulación en lazo cerrado, (7) gráficas comparativas, (8)
 animación. `main_double.jl` sigue siete pasos análogos (sin el paso Ackermann
 separado, porque para $n=6$ elegir polos a mano no es evidente y se prefiere el
-LQR).
+LQR). **[E2]** `main_triple.jl` sigue nueve: los siete del doble, más las
+métricas de viabilidad tras el análisis (paso 5) y el observador de Luenberger
+al final (paso 9), donde imprime la tabla de subconjuntos de sensores, verifica
+el principio de separación y simula el lazo con el estimador arrancando en cero.
 
 ### 3.4 Dependencias (Project.toml)
 
@@ -237,7 +241,14 @@ LQR).
 | `ForwardDiff` | Diferenciación automática: contrasta los jacobianos analíticos contra la derivada de las EOM no lineales |
 | `Pluto`, `PlutoUI` | Notebooks interactivos con sliders |
 | `Printf`, `Test` | Salida formateada por consola y pruebas de regresión |
-| `ControlSystems`, `Symbolics` | Declarados como apoyo previsto (verificación de control y derivaciones simbólicas); **hoy no se usan en ningún archivo**. `Symbolics` correspondía al módulo M8 del plan, que quedó sin implementar |
+
+Toda dependencia declarada se usa en algún archivo. `ControlSystems` y
+`Symbolics` estuvieron declarados como apoyo previsto y nunca llegaron a usarse
+(`Symbolics` correspondía al módulo M8 del plan, la verificación simbólica de los
+jacobianos, que quedó sin implementar); se **retiraron** del `Project.toml`, lo
+que bajó el entorno resuelto de 452 a 432 paquetes sin cambiar la versión de
+ninguna de las dependencias restantes. Si algún día se implementa M8, hay que
+volver a añadir `Symbolics` con `Pkg.add`.
 
 Nota clave: las rutinas de álgebra lineal centrales (linealización, Riccati,
 Ackermann) **se programaron a mano desde las definiciones**, no se delegaron a
@@ -1357,15 +1368,24 @@ $g = 1.62$ (Luna) y discutir si es más fácil de controlar.
 
 ### 10.6 Los scripts de figuras (reproducibilidad)
 
-- `make_report_figs.jl`: genera las figuras del informe técnico (CairoMakie,
-  salida estática) y **reporta por consola las métricas** ($t_s$, $\max|u|$,
-  $\max|x|$) que se citan en la discusión. Se ejecuta con
-  `julia --project=. docs/Entrega_1/resumen_tecnico/make_report_figs.jl`.
-- `make_slide_figs.jl`: genera las figuras de la presentación con la paleta
-  Beamer, incluyendo el mapa de polos y el barrido de condiciones iniciales.
+- `Entrega_1/resumen_tecnico/make_report_figs.jl`: genera las figuras del informe
+  de la primera entrega (CairoMakie, salida estática) y **reporta por consola las
+  métricas** ($t_s$, $\max|u|$, $\max|x|$) que se citan en la discusión.
+- `Entrega_1/presentacion/make_slide_figs.jl`: genera las figuras de la
+  presentación con la paleta Beamer, incluyendo el mapa de polos y el barrido de
+  condiciones iniciales.
+- **[E2]** `Entrega_2/resumen_tecnico/make_report_figs.jl`: figuras del informe
+  de la segunda entrega, y además la tabla comparativa de las tres
+  configuraciones, las fronteras prácticas, la tabla de subconjuntos de sensores
+  y la comparación de regiones de atracción con y sin observador. Necesita
+  `-t auto`.
+- **[E2]** `Entrega_2/atlas/make_atlas_figs.jl`: los cuatro mapas del atlas y las
+  tablas 1D. Cachea los barridos en `atlas/data/*.csv`; necesita `-t auto`.
 
-Ambos **reutilizan los módulos de `src/`**: no duplican física ni algoritmos.
-Definen su propia función `settling_time` con banda absoluta de 0.02 rad.
+Todos **reutilizan los módulos de `src/`**: no duplican física ni algoritmos.
+Los que miden tiempos de asentamiento definen su propia función `settling_time`
+con banda absoluta de 0.02 rad, y todos usan la misma convención: el primer
+instante *tras el cual* la señal ya no vuelve a salirse de la banda.
 
 ---
 
@@ -1653,10 +1673,11 @@ cd C:\Users\surib\Proyectos\proyecto-pendulos
 julia setup.jl
 ```
 
-Qué hace `setup.jl`: activa el entorno local (el de `Project.toml`), instala los
-ocho paquetes (`DifferentialEquations`, `CairoMakie`, `GLMakie`,
-`ControlSystems`, `MatrixEquations`, `Symbolics`, `Pluto`, `PlutoUI`) y los
-**precompila**.
+Qué hace `setup.jl`: activa el entorno local (el de `Project.toml`), descarga las
+versiones **exactas** fijadas en `Manifest.toml` con `Pkg.instantiate()` y las
+**precompila**. No actualiza nada: usar `Pkg.add` aquí volvería a resolver el
+grafo de dependencias y podría reescribir el `Manifest.toml`, que es justo lo
+que hay que evitar para que los números de los informes sigan reproduciéndose.
 
 Advertencia importante sobre el tiempo: esta primera vez **puede tardar varios
 minutos** (incluso 10-20 según la máquina y la conexión), porque descarga y
@@ -2091,7 +2112,8 @@ Registrarlo es parte del resultado: la capa no lineal de la región de atracció
 (acotar el residuo de la linealización para obtener una garantía rigurosa fuera
 del régimen lineal), el rediseño del LQR directamente en tiempo discreto (DARE
 por la matriz simpléctica, paralelo estructural con el hamiltoniano), la
-verificación simbólica de los jacobianos con `Symbolics`, la robustez
+verificación simbólica de los jacobianos con `Symbolics` (que habría que volver a
+añadir como dependencia: se retiró al no usarse), la robustez
 paramétrica, el LQR con acción integral y el *swing-up* energético.
 
 ---

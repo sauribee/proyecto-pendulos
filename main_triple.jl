@@ -157,9 +157,18 @@ println("=" ^ 60)
 tspan_ctrl = (0.0, 10.0)
 saturation = 150.0  # limite del actuador [N]
 
-# Los 50 N de la Configuracion I son insuficientes aqui: con norm(K) del orden
-# de 1176, una desviacion de theta2 = 0.05 rad ya pide unos 46 N solo por ese
-# termino.
+# Por que 150 N y no los 50 N de la Configuracion I. NO es porque la condicion
+# inicial nominal lo exija: con los tres angulos a 0.10 rad los terminos de K
+# alternan signo (-317, +912, -667) y se cancelan en buena medida, de modo que
+# el pico real es de 7.29 N. (El argumento de que una desviacion de theta2 =
+# 0.05 rad pediria unos 46 N solo por ese termino supone que una UNICA
+# componente se desvia, y resulto ser una mala guia: ver la seccion "Lo que la
+# implementacion corrigio" del informe tecnico de la segunda entrega.)
+#
+# El motivo real es que la frontera practica del triple se estanca en 0.252 rad
+# a partir de unos 73 N (mapa B del atlas): con 150 N el actuador deja de ser la
+# restriccion activa en todo el rango barrido, y lo que limita es la no
+# linealidad. El limite es un parametro del barrido, no una constante escondida.
 
 p_lqr = (params=params, K=lqr_result.K, saturate=saturation)
 prob_lqr = ODEProblem(closed_loop_eom_triple!, copy(x0_free), tspan_ctrl, p_lqr)
@@ -170,9 +179,14 @@ println("  Saturacion del actuador: +/- $(saturation) N")
 println("  Simulacion controlada completada")
 
 # Metricas de la respuesta
+# Primer instante TRAS EL CUAL |y| ya no vuelve a salirse de la banda. Es la
+# misma definicion que usan los tres scripts make_*_figs.jl: devuelve t[idx+1],
+# no t[idx], porque t[idx] es el ultimo instante en que la senal TODAVIA esta
+# fuera de la banda. Tenerlas distintas hacia que el pipeline y el informe
+# difirieran en una muestra sobre el mismo numero.
 function settling_time(t, y; tol=0.02)
-    idx = findlast(abs.(y) .> tol)
-    return idx === nothing ? 0.0 : t[idx]
+    idx = findlast(>(tol), abs.(y))
+    return idx === nothing ? t[1] : t[min(idx + 1, length(t))]
 end
 
 th_lqr = [[u[2j+1] for u in sol_lqr.u] for j in 1:3]

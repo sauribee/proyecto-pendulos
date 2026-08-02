@@ -1,8 +1,13 @@
 #!/usr/bin/env julia
 # =============================================================================
-# setup.jl -- Instala todas las dependencias del proyecto
+# setup.jl -- Instancia el entorno del proyecto
 # =============================================================================
 # Ejecutar: julia setup.jl
+#
+# Reproduce el entorno EXACTO fijado en Manifest.toml y lo precompila. No
+# actualiza versiones: si lo que se quiere es actualizar, hay que hacerlo a
+# mano con Pkg.update() y volver a validar con test/runtests.jl, porque los
+# valores publicados en los informes se calcularon con estas versiones.
 # =============================================================================
 
 println("=" ^ 60)
@@ -15,29 +20,25 @@ using Pkg
 println("\n  Activando proyecto...")
 Pkg.activate(@__DIR__)
 
-# Instalar dependencias
-println("\n  Instalando paquetes...")
-deps = [
-    "DifferentialEquations",   # Solvers de EDOs
-    "CairoMakie",               # Graficas estaticas (informes y notebooks Pluto)
-    "GLMakie",                  # Visualizacion y animacion interactiva
-    "ForwardDiff",              # Diferenciacion automatica (pruebas de jacobianos)
-    "MatrixEquations",          # Ecuaciones matriciales (Riccati, Lyapunov)
-    "ControlSystems",           # Analisis de sistemas de control (apoyo y verificacion)
-    "Symbolics",                # Calculo simbolico (derivaciones)
-    "Pluto",                    # Servidor de notebooks interactivos
-    "PlutoUI",                  # Widgets interactivos para Pluto
-]
+# ---------------------------------------------------------------------------
+# Instalar las dependencias EXACTAS que fija Manifest.toml.
+#
+# Se usa Pkg.instantiate() y NO Pkg.add() en bucle, y la diferencia importa:
+# Pkg.add vuelve a resolver el grafo de dependencias y puede reescribir
+# Manifest.toml con versiones mas nuevas, que es justo lo contrario de lo que un
+# Manifest versionado pretende garantizar. Pkg.instantiate lee el Manifest y
+# descarga esas versiones y no otras, de modo que el entorno queda identico al
+# que produjo los resultados de los informes.
+#
+# Las dependencias directas se declaran en Project.toml: esa es la unica fuente
+# de verdad. Listarlas tambien aqui solo crearia una copia que se desincroniza.
+# ---------------------------------------------------------------------------
+println("\n  Instalando las dependencias fijadas en Manifest.toml...")
+println("  (la primera vez descarga bastantes paquetes y puede tardar)")
+Pkg.instantiate()
 
-for dep in deps
-    println("  -> Instalando $dep...")
-    try
-        Pkg.add(dep)
-        println("     $dep instalado")
-    catch e
-        println("     Error con $dep: $(e.msg)")
-    end
-end
+println("\n  Dependencias directas del entorno:")
+Pkg.status()
 
 # Precompilar todo
 println("\n  Precompilando paquetes (esto puede tomar unos minutos)...")

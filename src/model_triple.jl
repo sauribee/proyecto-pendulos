@@ -81,10 +81,12 @@ Parametros esperados en p:
     p.K         -- Matriz de ganancia (1x8)
     p.saturate  -- (opcional) limite de fuerza [N]
 
-Sobre la saturacion: con norm(K) del orden de 1176, una desviacion de
-theta2 = 0.05 rad ya pide unos 46 N solo por ese termino. El limite de 50 N de
-la Configuracion I es INSUFICIENTE para el triple; el valor por defecto del
-pipeline es 150 N.
+Sobre la saturacion: el pipeline usa 150 N por defecto, frente a los 50 N de la
+Configuracion I. No es que la condicion inicial nominal lo exija --con los tres
+angulos a 0.10 rad los terminos de K alternan signo y se cancelan, y el pico
+real es de 7.29 N--, sino que la frontera practica del triple se estanca en
+0.252 rad a partir de unos 73 N: con 150 N el actuador deja de ser la
+restriccion activa y lo que limita es la no linealidad.
 """
 closed_loop_eom_triple!(dx, x, p, t) = closed_loop_eom_nlink!(dx, x, p, t)
 

@@ -948,7 +948,11 @@ salvo `ForwardDiff` si se acepta):
 
 ### M8. Verificación simbólica de los jacobianos
 
-`Symbolics` está en `Project.toml` y **no se usa en ningún archivo del
+> **Nota posterior.** M8 no se implementó, y `Symbolics` acabó retirándose del
+> `Project.toml` precisamente por no usarse. Si se retoma este módulo hay que
+> volver a añadirlo. El resto de la sección se conserva tal como se planeó.
+
+`Symbolics` estaba en `Project.toml` y **no se usaba en ningún archivo del
 repositorio**. Un script que derive simbólicamente $\partial f/\partial\mathbf{x}$
 a partir de las EOM y lo compare con las expresiones escritas a mano cerraría ese
 cabo suelto, y produciría de paso las fórmulas de $A$ y $B$ de la Configuración

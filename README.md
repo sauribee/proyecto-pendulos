@@ -31,6 +31,7 @@ Autores: Mateo Bedoya Rojas, Camilo Alejandro Patiño Osorio, Santiago Uribe Ech
 - [Documentos](#documentos)
 - [Regenerar figuras y compilar los PDFs](#regenerar-figuras-y-compilar-los-pdfs)
 - [Pruebas de regresión](#pruebas-de-regresión)
+- [Nota sobre el entorno](#nota-sobre-el-entorno)
 
 ---
 
@@ -146,8 +147,8 @@ acto de fe: la discrepancia máxima medida es $5.3\times10^{-15}$ para $N=1$ y
 Paquetes principales: `DifferentialEquations` (solver `Tsit5`),
 `CairoMakie` / `GLMakie` (gráficas y animación), `MatrixEquations` y
 `ForwardDiff` (verificación de la Riccati y de los jacobianos, en las pruebas) y
-`Pluto` / `PlutoUI` (notebooks interactivos). `ControlSystems` y `Symbolics`
-están declarados como apoyo previsto, pero hoy no se usan en ningún archivo.
+`Pluto` / `PlutoUI` (notebooks interactivos). Todo lo declarado se usa: cada
+dependencia de `Project.toml` aparece en algún archivo del repositorio.
 
 Las rutinas de álgebra lineal centrales —linealización, Riccati, Ackermann,
 margen PBH, discretización ZOH— **se programaron a mano desde las
@@ -406,10 +407,15 @@ $\{x, \theta_1, \theta_2, \theta_3\}$ en la Configuración III:
 
 **El observador no sale gratis.** El principio de separación es un teorema sobre
 el sistema **lineal**. Sobre el modelo no lineal la región de atracción se encoge
-entre la mitad y la cuarta parte, porque durante los primeros instantes el
-controlador actúa sobre una estimación equivocada —el pico de fuerza sube de
-7.3 N a 26 N— y ese esfuerzo mal dirigido saca a la planta del régimen donde la
-linealización vale:
+entre la mitad y la cuarta parte, y por un motivo contrario al que cabría
+esperar: el estimador arranca en cero, así que el mando arranca en cero también y
+durante el transitorio el controlador aplica fuerza *de menos*, no de más —desde
+la misma condición inicial su pico llega a ser menor que el del lazo con estado
+completo: 25.8 N frente a 31.7 N desviando un ángulo 0.10 rad—. Lo que crece es
+la **excursión**: mientras la estimación converge, la planta cae gobernada por un
+mando que todavía no la describe, y el ángulo máximo del transitorio se
+multiplica por un factor de entre 1.1 y 2.8. Es eso lo que acaba sacándola del
+régimen donde la linealización vale:
 
 | Ángulos desviados | Estado completo [rad] | Con observador [rad] | Ratio |
 |---|---|---|---|
@@ -476,7 +482,7 @@ configuración sin decir antes qué se optimiza.
 | Informe técnico, 1.ª entrega | `docs/Entrega_1/resumen_tecnico/` | 20 |
 | Resumen ejecutivo, 1.ª entrega | `docs/Entrega_1/resumen_ejecutivo/` | 3 |
 | Presentación (Beamer 16:9, 20 min) | `docs/Entrega_1/presentacion/` | 35 |
-| Informe técnico, 2.ª entrega | `docs/Entrega_2/resumen_tecnico/` | 18 |
+| Informe técnico, 2.ª entrega | `docs/Entrega_2/resumen_tecnico/` | 19 |
 | Resumen ejecutivo, 2.ª entrega | `docs/Entrega_2/resumen_ejecutivo/` | 4 |
 | Guía maestra (teoría + código + defensa) | `docs/guia_maestra.md` | — |
 | Plan de trabajo de la 2.ª entrega | `docs/Entrega_2/plan_de_trabajo.md` | — |
