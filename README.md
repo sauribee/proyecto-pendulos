@@ -106,8 +106,8 @@ proyecto-pendulos/
         │   └── resumen_ejecutivo.pdf
         └── atlas/                  Atlas de operabilidad
             ├── make_atlas_figs.jl
-            ├── figs/               atlas_a.png ... atlas_d.png
-            └── data/               cache CSV de los barridos (ignorado por git)
+            ├── figs/
+            └── data/
 ```
 
 Cada entrega es autocontenida: su informe técnico, su resumen ejecutivo y sus
@@ -281,17 +281,17 @@ y detén el servidor con `Ctrl-C` en la terminal de Julia.
 
 ## Resultados
 
-- **Simple:** espectro de lazo abierto $\{+4.21,\ 0,\ -0.077,\ -4.23\}$ (1 modo
-  inestable); LQR $K=(-3.16,\,-4.69,\,-45.39,\,-10.93)$; Ackermann con polos
-  $\{-1,-2,-3,-4\}$ da $K=(-1.75,\,-3.75,\,-39.01,\,-9.60)$.
+- **Simple:** espectro de lazo abierto $\lbrace +4.21,\ 0,\ -0.077,\ -4.23\rbrace$ (1 modo
+  inestable); LQR $K=(-3.16, -4.69, -45.39, -10.93)$; Ackermann con polos
+  $\lbrace -1,-2,-3,-4\rbrace$ da $K=(-1.75, -3.75, -39.01, -9.60)$.
 - **Doble:** espectro de lazo abierto
-  $\{+8.57,\ +4.09,\ 0,\ 0,\ -4.09,\ -8.57\}$ (2 modos inestables); rangos de
+  $\lbrace +8.57,\ +4.09,\ 0,\ 0,\ -4.09,\ -8.57\rbrace$ (2 modos inestables); rangos de
   controlabilidad y observabilidad $6/6$;
-  LQR $K=(3.16,\,5.82,\,-191.55,\,-10.99,\,228.32,\,36.14)$.
+  LQR $K=(3.16, 5.82, -191.55, -10.99, 228.32, 36.14)$.
 - **Triple:** espectro de lazo abierto
-  $\{+18.06,\ +9.77,\ +4.38,\ 0,\ -0.06,\ -4.40,\ -9.78,\ -18.06\}$ (3 modos
+  $\lbrace +18.06,\ +9.77,\ +4.38,\ 0,\ -0.06,\ -4.40,\ -9.78,\ -18.06\rbrace$ (3 modos
   inestables); rangos $8/8$;
-  LQR $K=(-3.16,\,-6.17,\,-317.43,\,-4.37,\,911.95,\,37.73,\,-667.37,\,-61.42)$
+  LQR $K=(-3.16, -6.17, -317.43, -4.37, 911.95, 37.73, -667.37, -61.42)$
   con $\lVert K\rVert_2 = 1176$.
 
 Sobre el modelo **no lineal** en lazo cerrado, desde la condición inicial nominal
@@ -314,9 +314,9 @@ Con los parámetros por defecto de cada una:
 |---|---|---|---|
 | $n$ | 4 | 6 | 8 |
 | Modos inestables | 1 | 2 | 3 |
-| $\lambda_{\max}$ [s$^{-1}$] | 4.21 | 8.57 | 18.06 |
+| $\lambda_{\max}\ [\mathrm{s}^{-1}]$ | 4.21 | 8.57 | 18.06 |
 | $\tau_{\text{caída}}$ [ms] | 237.5 | 116.7 | 55.4 |
-| $\mathrm{cond}\,\mathcal{C}$ | $3.6\times10^{1}$ | $1.6\times10^{4}$ | $2.2\times10^{8}$ |
+| $\mathrm{cond}(\mathcal{C})$ | $3.6\times10^{1}$ | $1.6\times10^{4}$ | $2.2\times10^{8}$ |
 | $\hat\mu$ (margen PBH) | $1.72\times10^{-2}$ | $2.56\times10^{-3}$ | $4.92\times10^{-4}$ |
 | $\lVert K\rVert_2$ | 47.0 | 300.5 | 1176.0 |
 | $\theta_0$ garantizado sin saturar ($u_{\max}=50$ N) | $55.1°$ | $13.4°$ | $8.7°$ |
@@ -334,7 +334,7 @@ $\mathcal{C}=[B\ \ AB\ \cdots\ A^{n-1}B]$ es una **base de Krylov**, notoriament
 mal condicionada. Medido sobre una familia normalizada (longitud total 1 m, masa
 total 0.6 kg repartidas en $N$ barras uniformes, $M=1$ kg, $b=0.1$):
 
-| $N$ | $n$ | $\lambda_{\max}$ [s$^{-1}$] | $\hat\mu$ (PBH) | $\mathrm{cond}\,\mathcal{C}$ | $\lVert K\rVert_2$ |
+| $N$ | $n$ | $\lambda_{\max}\ [\mathrm{s}^{-1}]$ | $\hat\mu$ (PBH) | $\mathrm{cond}(\mathcal{C})$ | $\lVert K\rVert_2$ |
 |---|---|---|---|---|---|
 | 1 | 4  | 4.51  | $1.31\times10^{-2}$ | $4.8\times10^{1}$  | 52.9 |
 | 2 | 6  | 10.59 | $1.79\times10^{-3}$ | $6.2\times10^{4}$  | 248.7 |
@@ -351,13 +351,13 @@ numérico de $\mathcal{C}$ es **ruido**, y sin embargo el sistema *sigue siendo*
 controlable en aritmética exacta. La herramienta que lo reemplaza es la versión
 cuantitativa del test de Popov–Belevitch–Hautus,
 
-$$\mu_{\text{PBH}}=\min_{\lambda\in\sigma(A)}\ \sigma_{\min}\big[\,A-\lambda I \ \big|\ B\,\big],
-\qquad \hat\mu=\frac{\mu_{\text{PBH}}}{\lVert[\,A\ \ B\,]\rVert_2}$$
+$$\mu_{\text{PBH}}=\min_{\lambda\in\sigma(A)}\ \sigma_{\min}\big[A-\lambda I\ \big|\ B\big],
+\qquad \hat\mu=\frac{\mu_{\text{PBH}}}{\lVert[A\ \ B]\rVert_2}$$
 
 que por el **teorema de Eckart–Young** es exactamente la distancia en norma 2 al
 conjunto de matrices de rango deficiente: mide *cuánto habría que perturbar el
 sistema para volverlo incontrolable*. A diferencia de
-$\mathrm{cond}\,\mathcal{C}$, que estalla casi quince órdenes de magnitud,
+$\mathrm{cond}(\mathcal{C})$, que estalla casi quince órdenes de magnitud,
 el margen PBH decae poco más de dos órdenes —un factor 145— y sigue siendo
 utilizable para comparar y para barrer.
 
@@ -365,11 +365,11 @@ utilizable para comparar y para barrer.
 
 El control $u = -K\mathbf{x}$ usa el estado **completo**, que en un sistema real
 no se mide: nadie pone un sensor de velocidad angular en cada articulación. Como
-$\mathrm{rank}\,\mathcal{O} = n$, el estado se puede reconstruir con un
+$\mathrm{rank}(\mathcal{O}) = n$, el estado se puede reconstruir con un
 observador de Luenberger
 
 $$\dot{\hat{\mathbf{x}}} = A\hat{\mathbf{x}} + Bu + L(\mathbf{y} - C\hat{\mathbf{x}}),
-\qquad \dot{\mathbf{e}} = (A - LC)\,\mathbf{e}$$
+\qquad \dot{\mathbf{e}} = (A - LC)\mathbf{e}$$
 
 y por la **dualidad de Kalman** la ganancia sale de la misma rutina que diseñó
 $K$, sin escribir ningún algoritmo nuevo: $L = \mathrm{lqr}(A^\top, C^\top, Q_o, R_o)^\top$.
@@ -378,7 +378,7 @@ El **principio de separación** sale de dos líneas de álgebra lineal: en
 coordenadas $(\mathbf{x}, \mathbf{e})$ la matriz de lazo cerrado es triangular
 por bloques,
 
-$$\begin{pmatrix}A - BK & BK\\ 0 & A - LC\end{pmatrix}
+$$\begin{pmatrix}A - BK & BK\cr 0 & A - LC\end{pmatrix}
 \quad\Longrightarrow\quad
 \sigma = \sigma(A-BK)\ \cup\ \sigma(A-LC)$$
 
@@ -389,7 +389,7 @@ $3.4\times10^{-12}$ en el triple, que es el peor de los tres y el que cita el
 informe.
 
 **¿Qué sensores hacen falta?** De los $2^4-1 = 15$ subconjuntos de
-$\{x, \theta_1, \theta_2, \theta_3\}$ en la Configuración III:
+$\lbrace x, \theta_1, \theta_2, \theta_3\rbrace$ en la Configuración III:
 
 - Todo subconjunto que **incluya la posición del carro** es observable ($8/8$).
   Son los $2^3 = 8$ que la contienen.
@@ -467,7 +467,7 @@ comparar la cota elipsoidal:
 
 Otros dos hallazgos del atlas: el margen PBH tiene un **máximo interior** en la
 masa del carro (alrededor de 0.13 kg), y el **eslabón superior corto es el
-peligroso** —con $\ell_3 = 2$ cm el modo dominante sube a 42.9 s$^{-1}$ y el
+peligroso** —con $\ell_3 = 2$ cm el modo dominante sube a $42.9\ \mathrm{s}^{-1}$ y el
 margen se hunde a $3.4\times10^{-5}$—. Nótese además que $c^\star$ y $\hat\mu$
 apuntan en direcciones opuestas al barrer $M$: no existe *la* mejor
 configuración sin decir antes qué se optimiza.
